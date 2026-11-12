@@ -1,7 +1,7 @@
 """Scans the stock 5.7.4 tree (read only) for UENUM names and module Build.cs files; writes data/stock_info.json.
 Usage: python -I scan_stock.py [engine_root]"""
 import os, re, sys, json
-root = sys.argv[1] if len(sys.argv) > 1 else r'C:\Workspace\UnrealEngine-5.7.4-release'
+root = sys.argv[1] if len(sys.argv) > 1 else (os.environ.get('UE_STOCK_ENGINE') or sys.exit('usage: script <stock engine root> (or set UE_STOCK_ENGINE)'))
 out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'stock_info.json')
 rx = re.compile(r'UENUM\s*\([^)]*\)\s*(?:(?:/\*.*?\*/|//[^\n]*\n)\s*)*(?:enum\s+(?:class\s+)?(?:\w+_API\s+)?(\w+)|namespace\s+(\w+))', re.S)
 enums, modules = set(), {}

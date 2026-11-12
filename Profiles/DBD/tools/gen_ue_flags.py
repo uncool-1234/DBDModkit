@@ -1,6 +1,6 @@
 """Regenerates ue_flags.py from the stock 5.7.4 headers (read only). Usage: python -I gen_ue_flags.py <engine_root>"""
 import re, sys, os
-root = sys.argv[1] if len(sys.argv) > 1 else r'C:\Workspace\UnrealEngine-5.7.4-release'
+root = sys.argv[1] if len(sys.argv) > 1 else (os.environ.get('UE_STOCK_ENGINE') or sys.exit('usage: script <stock engine root> (or set UE_STOCK_ENGINE)'))
 U = os.path.join(root, 'Engine', 'Source', 'Runtime', 'CoreUObject', 'Public', 'UObject')
 def grab(path, prefix):
     out = {}
