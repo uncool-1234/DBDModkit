@@ -9,10 +9,7 @@
   "structs": {
     "row_struct": {
       "base": "/Script/Engine.TableRowBase",
-      "mode": "drop_super"
-    },
-    "drop_super": [
-      "/Script/Engine.TableRowBase"
-    ]
+      "mode": "keep_super_guarded"
+    }
   }
 }
