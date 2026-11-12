@@ -5,6 +5,11 @@
       "path": "/Script/Engine.BHVRVariantConfigurator",
       "ops": "dbd.variant_configurator",
       "reason": "serialized raw by the game: object reference, FString, tag"
+    },
+    {
+      "path": "/Script/BhvrBark.BhvrBarkNodeTemplate",
+      "ops": "dbd.bark_node_template",
+      "reason": "hand serialized instanced struct: bool, struct type, then that struct's unversioned data inline without a size"
     }
   ]
 }
