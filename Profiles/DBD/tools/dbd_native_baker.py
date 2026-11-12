@@ -94,7 +94,14 @@ class Baker:
                 self.ed.add(p[3] + '.' + p[1]); self.ed_pk.add(p[3]); self.ES[p[1]] = p; short_count[p[1]] += 1
             elif p[0] == 'P': self.EP[p[1]].append((int(p[2]), p[3], p[4], p[5] == '1', p[6] == '1', int(p[7])))
         self.ed_short_dups = {k for k, c in short_count.items() if c > 1}
-        fa = json.load(open(os.path.join(DATA, 'fork_additions.json'))) if os.path.exists(os.path.join(DATA, 'fork_additions.json')) else {'types': [], 'members': {}}
+        # Members that the legacy fork added to engine headers (schema/_fork_additions.json). By default they are treated as ABSENT from the
+        # editor (editor_schemas.tsv was dumped from stock headers), so every game member the editor lacks gets a recipe entry and the
+        # stub types are generated; --with-fork-additions reproduces the pre-stage-2 behaviour (types/members present as real code).
+        fp = os.path.join(ROOT, 'schema', '_fork_additions.json')
+        fa = json.load(open(fp)) if os.path.exists(fp) else {'types': [], 'members': {}}
+        self.fork_marks = {k: set(v) for k, v in fa['members'].items()}  # class short name -> member names (marked 'fk' in recipes)
+        if not a.with_fork_additions:
+            fa = {'types': [], 'members': {}}
         self.fork_types = {t[1:] if len(t) > 1 and t[0] in 'UAFE' and t[1].isupper() else t for t in fa['types']} | set(fa['types'])
         self.fork_members = fa['members']
         self.fork_all_members = set().union(*[set(v) for v in fa['members'].values()]) if fa['members'] else set()
@@ -283,6 +290,18 @@ class Baker:
             seen, sigs = self.closure(roots, a.all_refs, not a.no_interfaces)
             self.roots = roots
         else:
+            # enums used by engine-type recipes (shadow properties) must exist even though their package is in the editor
+            self.diff_cache = self.diff_table()
+            sus = set(self.suspect_enums); extra = set()
+            def walk(pr):
+                for k in ('en', 'st', 'cls', 'meta', 'ic'):
+                    if pr.get(k) in sus: extra.add(pr[k])
+                for k in ('in', 'key', 'val'):
+                    if pr.get(k): walk(pr[k])
+            for rec in self.diff_cache['types']:
+                for pr in rec.get('game_props', ()): walk(pr)
+            self.missing['Enum'] |= extra
+            self.notes['enums generated for engine-type recipes'] = len(extra)
             seen = {n for t in self.missing.values() for n in t}
             sigs = None; self.roots = []
         enums = sorted(n for n in seen if o[n]['type'] == 'Enum')
@@ -412,7 +431,7 @@ class Baker:
     def proposal_members(self):
         res = collections.defaultdict(set); cur = None
         f = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'NOTES', 'header-batch-proposal.md')
-        if not os.path.exists(f): return res
+        if not os.path.exists(f) or not self.a.with_fork_additions: return res
         for l in open(f, encoding='utf8'):
             m = re.match(r'## (\w+) \(', l)
             if m: cur = m.group(1); continue
@@ -469,7 +488,8 @@ class Baker:
             if reorder: rec['order_differs'] = True
             if batch: rec['added_by_hand'] = batch
             rec['game_order'] = [[p['name'], p['type'], p['array_dim']] for p in v['properties']]
-            rec['game_props'] = [self.enc_prop(p) for p in v['properties']]
+            marks = {strip(x) for x in self.fork_marks.get(short, ())}
+            rec['game_props'] = [dict(self.enc_prop(p), fk=1) if strip(p['name']) in marks else self.enc_prop(p) for p in v['properties']]
             out.append(rec)
         stats['classes_or_structs_with_differences'] = len(out)
         stats['game_only_members'] = sum(len(r.get('game_only', ())) for r in out)
@@ -558,9 +578,11 @@ class Baker:
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--jmap', default=r'C:\Workspace\DeadByDaylight-Data\DBD-10.2.2.jmap')
-    ap.add_argument('--usmap', default=r'C:\Workspace\DeadByDaylight-Data\DBD-10.2.2.usmap')
-    ap.add_argument('--editor-schemas', default=r'C:\Workspace\B_work\editor_schemas.tsv')
+    # machine independent inputs: arguments, else environment (SUZIE_JMAP, SUZIE_USMAP, SUZIE_EDITOR_SCHEMAS), else the [Local] keys
+    # Jmap / Usmap / EditorSchemas of --local-ini (default: env MODKIT_LOCAL_INI)
+    ap.add_argument('--local-ini', default=os.environ.get('MODKIT_LOCAL_INI'))
+    ap.add_argument('--jmap'); ap.add_argument('--usmap'); ap.add_argument('--editor-schemas')
+    ap.add_argument('--with-fork-additions', action='store_true', help='legacy: treat members/types of schema/_fork_additions.json as already present in the editor')
     ap.add_argument('--out', default=os.path.join(DATA, 'dbd_native_types.json'))
     ap.add_argument('--roots', action='append', help='class paths or short names, comma separated, or @file (repeatable)')
     ap.add_argument('--all-refs', action='store_true', help='with --roots: also follow object/class/interface references, delegate signatures and default subobject classes')
@@ -572,6 +594,14 @@ def main():
     ap.add_argument('--no-diff', action='store_true'); ap.add_argument('--validate', action='store_true')
     ap.add_argument('--stats', action='store_true'); ap.add_argument('--pretty', action='store_true')
     a = ap.parse_args()
+    loc = {}
+    if a.local_ini and os.path.exists(a.local_ini):
+        for l in open(a.local_ini, encoding='utf8'):
+            if '=' in l and not l.lstrip().startswith((';', '[')): k, v = l.split('=', 1); loc[k.strip()] = v.strip()
+    for arg, env, key in (('jmap', 'SUZIE_JMAP', 'Jmap'), ('usmap', 'SUZIE_USMAP', 'Usmap'), ('editor_schemas', 'SUZIE_EDITOR_SCHEMAS', 'EditorSchemas')):
+        if not getattr(a, arg): setattr(a, arg, os.environ.get(env) or loc.get(key))
+    if not a.jmap: ap.error('no jmap: pass --jmap, set SUZIE_JMAP or give Jmap= in the ModkitLocal.ini (--local-ini)')
+    if not a.editor_schemas: ap.error('no editor schema dump: pass --editor-schemas, set SUZIE_EDITOR_SCHEMAS or EditorSchemas= in ModkitLocal.ini')
     b = Baker(a)
     res = b.build()
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
@@ -586,7 +616,7 @@ def main():
         json.dump(b.cdo_deltas(), open(a.cdo_out, 'w', encoding='utf8', newline='\n'), separators=(',', ':'))
         print('wrote', a.cdo_out, '%.1f MB' % (os.path.getsize(a.cdo_out) / 1e6))
     if not a.roots and not a.no_diff or a.diff_out:
-        dt = b.diff_table(); p = a.diff_out or os.path.join(DATA, 'dbd_editor_diffs.json')
+        dt = getattr(b, 'diff_cache', None) or b.diff_table(); p = a.diff_out or os.path.join(ROOT, 'schema', 'engine_diff.json')
         json.dump(dt, open(p, 'w', encoding='utf8', newline='\n'), separators=(',', ':'))
         print('wrote', p, dt['stats'])
     if a.validate:

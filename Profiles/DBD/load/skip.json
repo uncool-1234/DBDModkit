@@ -1,6 +1,17 @@
 {
   "format": 1,
   "skip_export_classes": [
-    { "class": "/Script/AkAudio.AkAudioType", "include_derived": true, "reason": "Wwise binary payload (AkAudioEvent, AkAudioBank, ...)" }
+    {
+      "class": "/Script/AkAudio.AkAudioType",
+      "include_derived": true,
+      "reason": "Wwise binary payload (AkAudioEvent, AkAudioBank, ...)"
+    }
+  ],
+  "post_serialize": [
+    {
+      "class": "/Script/Engine.MaterialInstance",
+      "handler": "dbd.material_instance_trailing_variants",
+      "reason": "the game appends a count and raw variant configurators after the reflected part of every material instance export"
+    }
   ]
 }

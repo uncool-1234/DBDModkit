@@ -1,9 +1,18 @@
 {
   "format": 1,
   "classes": {
-    "abstract_if_derived_from": [ "/Script/Engine.Subsystem", "/Script/DeveloperSettings.DeveloperSettings" ]
+    "abstract_if_derived_from": [
+      "/Script/Engine.Subsystem",
+      "/Script/DeveloperSettings.DeveloperSettings"
+    ]
   },
   "structs": {
-    "drop_super": [ "/Script/Engine.TableRowBase" ]
+    "row_struct": {
+      "base": "/Script/Engine.TableRowBase",
+      "mode": "drop_super"
+    },
+    "drop_super": [
+      "/Script/Engine.TableRowBase"
+    ]
   }
 }

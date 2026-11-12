@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "structs": [
+    {
+      "path": "/Script/Engine.BHVRVariantConfigurator",
+      "ops": "dbd.variant_configurator",
+      "reason": "serialized raw by the game: object reference, FString, tag"
+    }
+  ]
+}

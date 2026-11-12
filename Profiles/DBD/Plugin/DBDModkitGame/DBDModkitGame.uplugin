@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "DBD Modkit Game Extension",
+	"Description": "The only DBD specific CODE of the Suzie profile: native struct ops for the game's raw serialized variant configurator and the post-serialize handler for the trailing variant array of cooked material instances. Everything else is data in the profile directory.",
+	"Category": "Other",
+	"CanContainContent": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "DBDModkitGame",
+			"Type": "Editor",
+			"LoadingPhase": "None"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Suzie",
+			"Enabled": true
+		}
+	]
+}

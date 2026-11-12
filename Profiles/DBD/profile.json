@@ -8,6 +8,15 @@
   "overrides": "schema/overrides.json",
   "skip": "load/skip.json",
   "tags": "tags/tags.json",
-  "conflicting_plugins": [ { "plugin": "DBDNativeTypes", "disable_switch": "DisableDBDNativeTypes" } ],
-  "verify": { "usmap_tsv": "C:/Workspace/B_work/game_schemas.tsv" }
+  "conflicting_plugins": [
+    {
+      "plugin": "DBDNativeTypes",
+      "disable_switch": "DisableDBDNativeTypes"
+    }
+  ],
+  "verify": {
+    "usmap_tsv": "data/cache/game_schemas.tsv"
+  },
+  "native_ops": "load/native_ops.json",
+  "extension_module": "DBDModkitGame"
 }
