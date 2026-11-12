@@ -1,0 +1,6 @@
+{
+  "format": 1,
+  "source": { "kind": "jmap_cdo", "object_suffix": "Default__GameplayTagsSettings", "tag_list_property": "GameplayTagList", "redirects_property": "GameplayTagRedirects" },
+  "tags_ini": "Config/Tags/DBDGameTags.ini",
+  "probe_tag": "State.GuidedAction.BeingWokenUp"
+}

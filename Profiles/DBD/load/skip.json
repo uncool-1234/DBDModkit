@@ -1,0 +1,6 @@
+{
+  "format": 1,
+  "skip_export_classes": [
+    { "class": "/Script/AkAudio.AkAudioType", "include_derived": true, "reason": "Wwise binary payload (AkAudioEvent, AkAudioBank, ...)" }
+  ]
+}

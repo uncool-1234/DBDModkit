@@ -1,0 +1,5 @@
+{
+  "format": 1,
+  "types": { "/Script/CoreUObject.BPCompatiblePerPlatformFloat": "/Script/Engine.BPCompatiblePerPlatformFloat" },
+  "by_leaf_fallback": false
+}
