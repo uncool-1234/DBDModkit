@@ -66,7 +66,7 @@ There is no installer: the folder **is** the engine.
 
 ## 4. The AES key (you provide it, never shipped)
 
-* The package contains **no key and no game content** (checked: not in `ModkitLocal.ini.example`, not in the profile, not in the binaries; the engine reads the key from the file you name and never logs the value).
+* The package contains **no key and no game content** (a scan of the template, the profile and the plugin text files for 0x+64-hex strings found none; the engine reads the key from the file you name and never logs the value).
 * Create a text file, for example `D:\DBDModkit\secrets\dbd-aes.txt`, containing one line: the game's 32-byte AES-256 key as `0x` + 64 hex digits. Obtain it yourself from the community modding resources for the game (we do not distribute it).
 * Point to it with `KeyFile=` in `ModkitLocal.ini` (or `-ModkitKeyFile=<file>` on the command line, or the environment variable `MODKIT_AES_KEY_FILE`).
 * Protect the file (do not put it in the package, do not commit it, do not paste it into chats or logs).
@@ -221,7 +221,7 @@ Results of this package on the build PC are in section 13.
 * Containers mounted: 307 IoStore + 307 pak + the global container, premade registry, shader library `DeadByDaylight` 164,124 shaders, 238 plugin content roots.
 * Suzie generated 1,099 (+21 existing) enums, 2,571 structs, **7,592 classes**, 14,459 functions; overrides 50 types / 160 shadow properties / 0 skipped; `VERIFY: types=10163 ok=10004 mismatch=159`.
 * 531 Blueprint/AnimBP/Widget sweep: CLEAN 529, DIRTY 2 (`BP_ST_Basement01`, `BP_TL_St_2x2_Shrine_Hti`), CRASH 0. Material/MIC sweep: **PASS 200/200**.
-* Material Editor on a cooked material: see the build report in `NOTES.md` section O. Clean editor exit (exit code 0).
+* Material Editor opened on the cooked material `M_CAMPER_CUST` (`open_editor_for_assets` returned True); the editor then quit cleanly (exit code 0).
 * First start with an empty DDC took about 15 minutes (to the end of the shader compile and library mount).
 
 ## 14. Known limitations
