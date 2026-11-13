@@ -11,6 +11,7 @@
 
 #include "GameplayTagContainer.h"
 #include "Modules/ModuleManager.h"
+#include "Features/IModularFeatures.h"
 #include "Serialization/Archive.h"
 #include "UObject/Package.h"
 #include "UObject/GarbageCollection.h"
