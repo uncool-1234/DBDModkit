@@ -1,0 +1,16 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "DBDModkit-5.7.4",
+	"Category": "",
+	"Description": "DBD cooked-content mount (modkit template, content-only project; Suzie and DBDModkitGame are engine plugins of the installed build)",
+	"Plugins": [
+		{
+			"Name": "Suzie",
+			"Enabled": true
+		},
+		{
+			"Name": "DBDModkitGame",
+			"Enabled": true
+		}
+	]
+}

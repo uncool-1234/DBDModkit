@@ -1,0 +1,15 @@
+; Copy this file to ModkitLocal.ini (same folder as DBDMount.uproject) and edit. It is the ONLY place with machine specific absolute paths.
+; Forward slashes work on Windows. Never put a key VALUE here, only the PATH of a key file you created yourself.
+[Local]
+; folder with engine.ini (read by the engine) and profile.json (read by Suzie): the DBD profile inside the installed engine
+Profile=D:/DBDModkit/Windows/Engine/Plugins/Modkit/Suzie/Profiles/DBD
+; install root of your Dead by Daylight (the folder that contains DeadByDaylight\Content\Paks)
+GameRoot=D:/Games/Dead by Daylight
+; text file with the game's AES key (one line, 0x + 64 hex digits). You provide it, it is not shipped.
+KeyFile=D:/DBDModkit/secrets/dbd-aes.txt
+; optional, used by the sweep harness and the helper scripts (default: path from EngineAssociation / MODKIT_ENGINE)
+EngineDir=D:/DBDModkit/Windows
+; optional, only for Tools/suzie_tags.py (gameplay tags) and for re-baking the profile
+Jmap=D:/DBDModkit/game-data/DBD-10.2.2.jmap
+; optional, only for Suzie.VerifyNativeTypes / CUE4Parse tools
+Usmap=D:/DBDModkit/game-data/DBD-10.2.2.usmap
