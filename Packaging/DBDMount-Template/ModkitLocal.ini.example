@@ -1,15 +1,18 @@
-; Copy this file to ModkitLocal.ini (same folder as DBDMount.uproject) and edit. It is the ONLY place with machine specific absolute paths.
+; Copy this file to ModkitLocal.ini (same folder as DBDMount.uproject) and edit. It is the ONLY file with machine specific absolute paths.
 ; Forward slashes work on Windows. Never put a key VALUE here, only the PATH of a key file you created yourself.
 [Local]
-; folder with engine.ini (read by the engine) and profile.json (read by Suzie): the DBD profile inside the installed engine
+; Profile= is the profile FOLDER: the folder that contains profile.json AND engine.ini. It is NOT the path of profile.json.
+;   right: .../Suzie/Profiles/DBD        wrong: .../Suzie/Profiles/DBD/profile.json   (the wrong form makes Suzie idle: "no profile selected")
 Profile=D:/DBDModkit/Windows/Engine/Plugins/Modkit/Suzie/Profiles/DBD
 ; install root of your Dead by Daylight (the folder that contains DeadByDaylight\Content\Paks)
 GameRoot=D:/Games/Dead by Daylight
 ; text file with the game's AES key (one line, 0x + 64 hex digits). You provide it, it is not shipped.
 KeyFile=D:/DBDModkit/secrets/dbd-aes.txt
-; optional, used by the sweep harness and the helper scripts (default: path from EngineAssociation / MODKIT_ENGINE)
+; optional: engine root, used by the sweep harness and helper scripts (default: path from EngineAssociation / MODKIT_ENGINE)
 EngineDir=D:/DBDModkit/Windows
-; optional, only for Tools/suzie_tags.py (gameplay tags) and for re-baking the profile
+; optional: only for Tools/suzie_tags.py (gameplay tags) and for re-baking the profile
 Jmap=D:/DBDModkit/game-data/DBD-10.2.2.jmap
-; optional, only for Suzie.VerifyNativeTypes / CUE4Parse tools
+; optional: only for external tools (CUE4Parse); Suzie.VerifyNativeTypes uses UsmapTsv or data/cache/game_schemas.tsv of the profile
 Usmap=D:/DBDModkit/game-data/DBD-10.2.2.usmap
+; optional: usmap schema dump for Suzie.VerifyNativeTypes
+;UsmapTsv=<absolute path of the schema dump>

@@ -2,5 +2,5 @@
   "format": 1,
   "types": {},
   "by_leaf_fallback": false,
-  "note": "Stage 1 mapped /Script/CoreUObject.BPCompatiblePerPlatformFloat to a stub header type in /Script/Engine; the stub is gone, the type is generated at its game path."
+  "note": "types maps a game type path to the editor type path; empty: /Script/CoreUObject.BPCompatiblePerPlatformFloat is generated at its game path."
 }

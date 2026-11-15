@@ -94,9 +94,9 @@ class Baker:
                 self.ed.add(p[3] + '.' + p[1]); self.ed_pk.add(p[3]); self.ES[p[1]] = p; short_count[p[1]] += 1
             elif p[0] == 'P': self.EP[p[1]].append((int(p[2]), p[3], p[4], p[5] == '1', p[6] == '1', int(p[7])))
         self.ed_short_dups = {k for k, c in short_count.items() if c > 1}
-        # Members that the legacy fork added to engine headers (schema/_fork_additions.json). By default they are treated as ABSENT from the
-        # editor (editor_schemas.tsv was dumped from stock headers), so every game member the editor lacks gets a recipe entry and the
-        # stub types are generated; --with-fork-additions reproduces the pre-stage-2 behaviour (types/members present as real code).
+        # Members and types that a modified engine tree carries in its headers (schema/_fork_additions.json). By default they count as ABSENT from
+        # the editor (the editor schema dump comes from stock headers): every game member the editor lacks gets a recipe entry and the types are
+        # generated. --with-fork-additions treats them as present real code.
         fp = os.path.join(ROOT, 'schema', '_fork_additions.json')
         fa = json.load(open(fp)) if os.path.exists(fp) else {'types': [], 'members': {}}
         self.fork_marks = {k: set(v) for k, v in fa['members'].items()}  # class short name -> member names (marked 'fk' in recipes)
@@ -105,7 +105,7 @@ class Baker:
         self.fork_types = {t[1:] if len(t) > 1 and t[0] in 'UAFE' and t[1].isupper() else t for t in fa['types']} | set(fa['types'])
         self.fork_members = fa['members']
         self.fork_all_members = set().union(*[set(v) for v in fa['members'].values()]) if fa['members'] else set()
-        # fork-added types are present now (stubs added by hand); match by short name inside engine packages
+        # types added to the engine headers by hand: matched by short name inside engine packages
         self.hand_added = set()
         for n, v in self.o.items():
             if v['type'] in ('Class', 'ScriptStruct', 'Enum') and n.split('.')[-1] in self.fork_types: self.hand_added.add(n)
@@ -430,7 +430,7 @@ class Baker:
 
     def proposal_members(self):
         res = collections.defaultdict(set); cur = None
-        f = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'NOTES', 'header-batch-proposal.md')
+        f = os.path.join(ROOT, 'data', 'header-batch-proposal.md')
         if not os.path.exists(f) or not self.a.with_fork_additions: return res
         for l in open(f, encoding='utf8'):
             m = re.match(r'## (\w+) \(', l)
@@ -494,7 +494,7 @@ class Baker:
         stats['classes_or_structs_with_differences'] = len(out)
         stats['game_only_members'] = sum(len(r.get('game_only', ())) for r in out)
         stats['editor_only_members'] = sum(len(r.get('editor_only', ())) for r in out)
-        return {'format': FORMAT_VERSION, 'note': 'editor types (from editor_schemas.tsv, taken before the header batch) whose non-editor-only properties differ from the game; members added by hand in the fork (fork_additions.json + header-batch-proposal.md) are excluded from game_only',
+        return {'format': FORMAT_VERSION, 'note': 'stock editor types (from the editor schema dump) whose non-editor-only properties differ from the game; members listed in _fork_additions.json are marked fk',
                 'stats': dict(stats), 'suspect_enums': sorted(self.suspect_enums), 'types': sorted(out, key=lambda r: r['p'])}
 
     # ---- usmap cross-check ---------------------------------------------------------------------------------------------
@@ -582,7 +582,7 @@ def main():
     # Jmap / Usmap / EditorSchemas of --local-ini (default: env MODKIT_LOCAL_INI)
     ap.add_argument('--local-ini', default=os.environ.get('MODKIT_LOCAL_INI'))
     ap.add_argument('--jmap'); ap.add_argument('--usmap'); ap.add_argument('--editor-schemas')
-    ap.add_argument('--with-fork-additions', action='store_true', help='legacy: treat members/types of schema/_fork_additions.json as already present in the editor')
+    ap.add_argument('--with-fork-additions', action='store_true', help='treat members/types of schema/_fork_additions.json as already present in the editor')
     ap.add_argument('--out', default=os.path.join(DATA, 'dbd_native_types.json'))
     ap.add_argument('--roots', action='append', help='class paths or short names, comma separated, or @file (repeatable)')
     ap.add_argument('--all-refs', action='store_true', help='with --roots: also follow object/class/interface references, delegate signatures and default subobject classes')
