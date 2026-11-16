@@ -7,7 +7,7 @@ All game specifics of Suzie live in this directory, plus the engine branch `game
 | `profile.json` | entry point: names the data files, the extension module, plugins that must not generate at the same time, the usmap tsv for `Suzie.VerifyNativeTypes` (relative paths resolve against this directory) |
 | `engine.ini` | read by the ENGINE (`Misc/ModkitCore.cpp`) before any plugin loads: container probing, index cipher pipeline, shader library, layout tolerance, plugin content roots |
 | `ModkitLocal.example.ini` | machine local keys; copy to `<Project>/ModkitLocal.ini` (never put a key VALUE there, only the path of the key file) |
-| `data/bake/types.json`, `data/bake/cdo.json` | GENERATED, gitignored: baked types (format 1) and CDO deltas written by `tools/dbd_native_baker.py` |
+| `data/bake/types.json`, `data/bake/cdo.json` | GENERATED, gitignored: baked types (format 1, read by Suzie) and CDO deltas written by `tools/dbd_native_baker.py` (not read by Suzie; CDO property values are not applied) |
 | `data/bake/*_stage1.json` | baked files for a build whose engine headers still carry game members |
 | `data/cache/` | local, gitignored: `game_schemas.tsv` (usmap dump for `Suzie.VerifyNativeTypes`) |
 | `data/editor_schemas_stock.tsv`, `data/stock_info.json` | baker inputs describing the STOCK 5.7.4 reflection (gitignored) |
@@ -21,7 +21,7 @@ All game specifics of Suzie live in this directory, plus the engine branch `game
 | `Plugin/DBDModkitGame` | the only DBD specific CODE (module named by `extension_module`, loaded by Suzie on demand) |
 | `tags/tags.json` | gameplay tag source, ini path, probe tag; `Tools/suzie_tags.py` writes the ini files |
 | `sweeps/` | asset lists of the sweep harness (`Tools/sweep`) |
-| `tools/` | baker `dbd_native_baker.py`, `bake_all.cmd`, `make_stock_editor_schema.py`, `scan_stock.py`, flag tables, `usmap_reader.py` |
+| `tools/` | baker `dbd_native_baker.py`, `bake_all.cmd`, `make_stock_editor_schema.py`, `scan_stock.py`, flag tables, `usmap_reader.py`, `usmap_to_tsv.py` (writes `data/cache/game_schemas.tsv` from a usmap) |
 
 ## Shadow recipes
 
