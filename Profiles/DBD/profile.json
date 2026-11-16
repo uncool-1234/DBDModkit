@@ -2,8 +2,6 @@
   "format": 1,
   "id": "dbd",
   "description": "Dead by Daylight 10.2.2 (UE 5.7). All game specifics live in this directory.",
-  "types": "data/bake/types.json",
-  "engine_diff": "schema/engine_diff.json",
   "aliases": "schema/aliases.json",
   "overrides": "schema/overrides.json",
   "skip": "load/skip.json",
@@ -14,9 +12,6 @@
       "disable_switch": "DisableDBDNativeTypes"
     }
   ],
-  "verify": {
-    "usmap_tsv": "data/cache/game_schemas.tsv"
-  },
   "native_ops": "load/native_ops.json",
   "extension_module": "DBDModkitGame"
 }
