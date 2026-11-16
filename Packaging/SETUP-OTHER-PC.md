@@ -19,7 +19,7 @@ The two plugins that do this, `Suzie` and `DBDModkitGame`, are **engine plugins 
 4. [ ] Have **your own** Dead by Daylight install, **version 10.2.2** (section 3), and the game's `.jmap` for that version (section 12).
 5. [ ] Have the game's AES key in a text file you create yourself (one line, `0x` + 64 hex digits), outside the package (section 4).
 6. [ ] Copy `<PKG>\DBDMount-Template` to your work folder (for example `D:\DBDModkit\Work\DBDMount`).
-7. [ ] Extract `AssetRegistry.bin` from the game's containers into the project root (section 5).
+7. [ ] Asset registry: no step; the editor reads it from the game's containers (section 5).
 8. [ ] Gameplay tags need no step: the editor writes them from the jmap (section 6).
 9. [ ] Copy `ModkitLocal.ini.example` to `ModkitLocal.ini` and fill in the paths (section 7).
 10. [ ] Register the engine with `Register Engine.cmd` (section 2) or start with `Start Editor.bat`.
@@ -32,7 +32,7 @@ The two plugins that do this, `Suzie` and `DBDModkitGame`, are **engine plugins 
 |---|---|
 | OS | Windows 10 (64 bit) or Windows 11 |
 | Compiler | Not needed for the template project (no C++ module; plugins are precompiled in the engine). Visual Studio 2022 (Desktop development with C++, Windows 11 SDK) is needed only to add a C++ module to a project or to rebuild the plugins (their `Source` is included). |
-| .NET / Python | Only for helper tools: .NET 10 SDK (`ExtractAssetRegistry`), Python 3 (sweep scripts). The editor needs neither. |
+| .NET / Python | Only for helper tools: Python 3 (sweep scripts). The editor needs neither. |
 | GPU | D3D12 capable with Shader Model 5 (GTX 900 / RX 400 or newer, recent driver). The editor runs with `-d3d12 -sm5`; the cooked shaders exist only as `PCD3D_SM5`. Vulkan and SM6 cannot use them. |
 | RAM | 16 GB works; 32 GB is more comfortable for shader compile workers. |
 | Disk | The installed engine is about 207 GB (Development and DebugGame editor, client/server/game targets, symbols, docs, templates, no prebuilt DDC), plus the project DDC (a few GB after first start). The game is about 60 to 70 GB. |
@@ -60,21 +60,11 @@ The folder is the engine; there is no installer.
 * Point to it with `KeyFile=` in `ModkitLocal.ini` (or `-ModkitKeyFile=<file>`, or env `MODKIT_AES_KEY_FILE`).
 * Keep the file out of the package, out of version control, chats and logs.
 
-## 5. AssetRegistry.bin (premade registry of the game)
+## 5. Asset registry (premade registry of the game)
 
-The profile uses the game's own premade asset registry (96,267 assets); it must be in the **project root** as `AssetRegistry.bin`. It is read from the game's first container (`DeadByDaylight/AssetRegistry.bin` in `pakchunk0`), so extract it from **your** install.
+The profile uses the game's own premade asset registry (96,267 assets). The engine reads it straight from the mounted container: `DeadByDaylight/AssetRegistry.bin` in `pakchunk0`, named by `[AssetRegistry] PakPath` in the profile's `engine.ini`. No extraction and no file in the project is needed.
 
-Tool in the package: `Windows\Engine\Plugins\Modkit\Suzie\Tools\ExtractAssetRegistry` (C#, uses CUE4Parse).
-
-```
-git clone https://github.com/FabianFG/CUE4Parse.git D:\DBDModkit\CUE4Parse          (a recent net10.0 checkout)
-cd D:\DBDModkit\Windows\Engine\Plugins\Modkit\Suzie\Tools\ExtractAssetRegistry
-dotnet build -c Release -o D:\DBDModkit\tools\ear -p:CUE4ParseDir=D:\DBDModkit\CUE4Parse
-dotnet D:\DBDModkit\tools\ear\ExtractAssetRegistry.dll "<GameRoot>\DeadByDaylight\Content\Paks" "<KeyFile>" "<project>\AssetRegistry.bin"
-```
-
-It prints `mounted 614 groups ...` and `wrote ...`. The file holds no code and no key; someone with the **same game version** can give you theirs instead.
-
+A file `<project>\EditorClientAssetRegistry.bin` or `<project>\AssetRegistry.bin`, when present, is loaded instead of the one in the container.
 ## 6. Gameplay tags (automatic)
 
 No step is needed. After generating the types the editor writes the game's tag list and redirects from the jmap to `<project>\Config\Tags\DBDGameTags.ini` and `<project>\Config\DefaultGameplayTags.ini` (only when their content differs) and logs `Gameplay tags written from the jmap: N tags, M redirects`. Changed redirects apply from the next editor start. `Suzie.TagInfo` reports the manager's tag count.
@@ -137,7 +127,7 @@ In `<project>\Saved\Logs\DBDMount.log`:
 LogModkit: Display: Modkit profile 'dbd' (...Profiles/DBD) active, game Paks directory: ...
 LogModkit: Display: Loaded AES key from '...' (value not logged).
 LogPakFile: Display: Mounted IoStore container ... (307 times) and Mounted Pak file ... (307 times) + the global container
-LogAssetRegistry: Premade AssetRegistry loaded from '.../AssetRegistry.bin'
+LogAssetRegistry: Premade AssetRegistry loaded from '../../../DeadByDaylight/AssetRegistry.bin'
 LogInit: Display: Modkit: opened shader library 'DeadByDaylight': yes (total shaders in library: 164124, library enabled: 1)
 LogInit: Display: Modkit: registered 238 game plugin content roots (238 .uplugin files found).
 LogSuzie: jmap <file>: 63026 objects, parse 8.1s, derive 1.1s
@@ -184,7 +174,7 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 * Everything game specific is **data in a profile folder** (`Suzie\Profiles\<Game>`: `engine.ini` for the engine, `profile.json` + `schema/`, `load/`, `tags/` for Suzie, optional `Plugin/<GamePlugin>` with the only game code). Switch with `Profile=` in `ModkitLocal.ini` (or `-ModkitProfile=`).
 * This installed build is the `game/dbd` branch: besides the generic hooks it contains the DBD 10.2.2 uniform buffer layouts and a `FShaderMapContent` +8 byte field. A second game generally needs its own engine branch and installed build; only games whose shader layouts equal the engine's can reuse it with another profile.
 * New game: create `Profiles/<G2>` from the DBD profile (copy `engine.ini`, `profile.json`, `load/skip.json`, `tags/tags.json`), obtain the game's jmap, set `ModkitLocal.ini` (`Jmap=`), run `Suzie.VerifyNativeTypes`, run the sweep harness.
-* New DBD version: set `Jmap=` to the jmap of the new version and restart; types, schema recipes and gameplay tags follow from it. Re-extract `AssetRegistry.bin` (section 5) and re-check layouts if the shader parameter structs changed.
+* New DBD version: set `Jmap=` to the jmap of the new version and restart; types, schema recipes and gameplay tags follow from it. The asset registry follows from the game install; re-check layouts if the shader parameter structs changed.
 
 ## 12. The jmap (you provide it)
 
@@ -196,7 +186,7 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 ## 13. Licensing
 
 This folder contains a **modified Unreal Engine 5.7.4** built from Epic's source. Unreal Engine is subject to the Unreal Engine End User License Agreement; redistributing built engine binaries or source is permitted only under that EULA (source access is granted to registered licensees and sharing is limited to other licensees). Do not share this package publicly.
-`Suzie` is a fork of trumank/Suzie (MIT, see its `LICENSE`); `CUE4Parse` has its own license.
+`Suzie` is a fork of trumank/Suzie (MIT, see its `LICENSE`).
 **No game content, assets or encryption keys are included.** The profile's test references (`data/golden`, `sweeps/`) list names of the game's types and assets. The jmap and the key file are yours. Dead by Daylight and its assets belong to Behaviour Interactive.
 
 Known limitations of this build: `docs/limitations.md` of the DBD-UEEditor project.
