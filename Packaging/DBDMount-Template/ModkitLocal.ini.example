@@ -10,9 +10,5 @@ GameRoot=D:/Games/Dead by Daylight
 KeyFile=D:/DBDModkit/secrets/dbd-aes.txt
 ; optional: engine root, used by the sweep harness and helper scripts (default: path from EngineAssociation / MODKIT_ENGINE)
 EngineDir=D:/DBDModkit/Windows
-; optional: only for Tools/suzie_tags.py (gameplay tags) and for re-baking the profile
+; the game's jmap (JSON reflection dump of the game process, trumank/jmap format). You provide it. Suzie generates the game's types and gameplay tags from it at every start.
 Jmap=D:/DBDModkit/game-data/DBD-10.2.2.jmap
-; optional: only for external tools (CUE4Parse); Suzie.VerifyNativeTypes uses UsmapTsv or data/cache/game_schemas.tsv of the profile
-Usmap=D:/DBDModkit/game-data/DBD-10.2.2.usmap
-; optional: usmap schema dump for Suzie.VerifyNativeTypes
-;UsmapTsv=<absolute path of the schema dump>
