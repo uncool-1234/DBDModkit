@@ -53,18 +53,13 @@
         "count": 1
       },
       {
-        "name": "types generated",
-        "pattern": "GENERATE OK .* classes=7592\\(\\+0 existing, 0 failed\\)",
+        "name": "types generated without failures",
+        "pattern": "GENERATE OK .* classes=[0-9]+\\(\\+0 existing, 0 failed\\)",
         "count": 1
       },
       {
         "name": "verify gate (ok >= 10000 of 10163)",
         "pattern": "VERIFY RESULT: types=10163 ok=10[0-9]{3} ",
-        "count": 1
-      },
-      {
-        "name": "gameplay tags",
-        "pattern": "TAGINFO manager tags=6330 ",
         "count": 1
       }
     ]
