@@ -64,7 +64,7 @@
       },
       {
         "name": "gameplay tags",
-        "pattern": "TAGINFO manager tags=6382 ",
+        "pattern": "TAGINFO manager tags=6330 ",
         "count": 1
       }
     ]
