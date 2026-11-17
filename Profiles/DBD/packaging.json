@@ -18,6 +18,9 @@
     "*.ucas",
     "ModkitLocal.ini"
   ],
+  "allowed_paths": [
+    "*/Engine/Binaries/ThirdParty/CEF3/*"
+  ],
   "forbidden_folders": [
     "ModkitData"
   ],

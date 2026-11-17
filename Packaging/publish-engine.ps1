@@ -1,6 +1,7 @@
 # Builds, assembles and archives a release of the modkit engine for one profile. Entry point: publish-engine.cmd.
 #
-# Stages (each writes a marker under <WorkDir>\state and is skipped on the next run while the engine and Suzie commits are unchanged):
+# Stages (each writes a marker under <WorkDir>\state and is skipped on the next run while its inputs are unchanged: source and build
+# depend on the engine commit and the compiled Suzie and game plugin files, the later stages on the engine and Suzie commits):
 #   source    copy of the engine tree without .git/Intermediate/Saved, plus Suzie and the profile's game plugin under Engine\Plugins\Modkit
 #   build     BuildGraph "Make Installed Build Win64" (build-installed.cmd)
 #   assemble  trimmed engine, profile, tools, Register Engine.bat, project template, setup guide, VERSION.txt under <WorkDir>\Release
@@ -143,15 +144,30 @@ foreach ($repo in @($EngineSource, $SuzieRoot)) {
 $EngineCommit = (GitOut $EngineSource rev-parse HEAD) | Select-Object -First 1
 $SuzieCommit = (GitOut $SuzieRoot rev-parse HEAD) | Select-Object -First 1
 $Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName debuginfo=$([bool]$WithDebugInfo)"
+# The build copy holds Suzie without Packaging, Profiles and Tools plus the game plugin: hash exactly those trees.
+$suzieTree = @(GitOut $SuzieRoot ls-tree HEAD | Where-Object { ($_ -split "`t")[-1] -notin @('Packaging', 'Profiles', 'Tools') }) -join "`n"
+$sha = [Security.Cryptography.SHA1]::Create()
+$suzieTreeHash = -join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($suzieTree)) | ForEach-Object { $_.ToString('x2') })
+$gamePluginRel = $GamePlugin.Substring($SuzieRoot.Length).TrimStart('\').Replace('\', '/')
+$gamePluginTree = (GitOut $SuzieRoot rev-parse "HEAD:$gamePluginRel") | Select-Object -First 1
+$BuildFingerprint = "engine=$EngineCommit suzie-build=$suzieTreeHash game-plugin=$gamePluginTree debuginfo=$([bool]$WithDebugInfo)"
+$BuildStages = @('source', 'build')
 $assoc = (Get-Content (Get-ChildItem $Template -Filter *.uproject | Select-Object -First 1).FullName -Raw | ConvertFrom-Json).EngineAssociation
 if ($assoc -ne $Proj.engine_id) { Fail "the template's EngineAssociation '$assoc' differs from project.json engine_id '$($Proj.engine_id)'" }
 if (-not $SevenZip) { Fail '7-Zip (7z.exe) not found' }
 Info "Engine $EngineCommit, Suzie $SuzieCommit, 7-Zip $SevenZip"
 
 New-Item -ItemType Directory -Force $StateDir, $OutDir | Out-Null
-$stale = @(Get-ChildItem $StateDir -Filter *.done | Where-Object { (Get-Content $_.FullName -Raw).Trim() -ne $Fingerprint })
-if ($Clean -or $stale.Count) {
-  if ($stale.Count -and -not $Clean) { Warn 'the commits changed since the last run: all stages run again' }
+function StageFingerprint($stage) { if ($BuildStages -contains $stage) { $BuildFingerprint } else { $Fingerprint } }
+$markers = @(Get-ChildItem $StateDir -Filter *.done)
+$staleBuild = @($markers | Where-Object { $BuildStages -contains $_.BaseName -and (Get-Content $_.FullName -Raw).Trim() -ne $BuildFingerprint })
+$staleLate = @($markers | Where-Object { $BuildStages -notcontains $_.BaseName -and (Get-Content $_.FullName -Raw).Trim() -ne $Fingerprint })
+if (-not $Clean -and -not $staleBuild.Count -and $staleLate.Count) {
+  Warn 'packaging, profile or tools changed since the last run: the stages after build run again'
+  $staleLate | Remove-Item -Force
+}
+if ($Clean -or $staleBuild.Count) {
+  if ($staleBuild.Count -and -not $Clean) { Warn 'the engine or the compiled Suzie files changed since the last run: all stages run again' }
   Get-ChildItem $StateDir -Filter *.done | Remove-Item -Force
   $bgCache = Join-Path $Src 'Engine\Saved'
   if (Test-Path $bgCache) { Info "Removing the BuildGraph cache $bgCache"; cmd /c rmdir /s /q "`"$bgCache`"" }
@@ -182,7 +198,7 @@ function Stage($name, [scriptblock]$body, [switch]$Always) {
   if (-not $Always -and (Done $name)) { Info 'done in an earlier run, skipped'; [void]$Timings.Add([pscustomobject]@{ Stage = $name; Result = 'skipped'; Minutes = 0 }); return }
   $t = Get-Date
   & $body
-  Set-Content (Join-Path $StateDir "$name.done") $Fingerprint
+  Set-Content (Join-Path $StateDir "$name.done") (StageFingerprint $name)
   [void]$Timings.Add([pscustomobject]@{ Stage = $name; Result = 'ok'; Minutes = [math]::Round(((Get-Date) - $t).TotalMinutes, 1) })
 }
 
@@ -259,9 +275,11 @@ Stage 'safety' -Always {
   foreach ($d in @(Get-ChildItem $Release -Recurse -Force -Directory | Where-Object { $n = $_.Name; @($Pkg.forbidden_folders | Where-Object { $n -like $_ }).Count })) {
     if (Test-Path $d.FullName) { Warn "removing folder $($d.FullName) (forbidden in a release)"; Remove-Item $d.FullName -Recurse -Force; $removed++ }
   }
+  $allowed = @($Pkg.allowed_paths)
   foreach ($f in Get-ChildItem $Release -Recurse -Force -File) {
     $n = $f.Name; $why = $null
-    $hit = @($Pkg.forbidden_files | Where-Object { $n -like $_ }) | Select-Object -First 1
+    $rel = $f.FullName.Substring($Release.Length).TrimStart('\').Replace('\', '/')
+    $hit = if (@($allowed | Where-Object { $rel -like $_ }).Count) { $null } else { @($Pkg.forbidden_files | Where-Object { $n -like $_ }) | Select-Object -First 1 }
     if ($hit) { $why = "matches $hit" }
     elseif ($f.Length -le 100 -and ([IO.File]::ReadAllText($f.FullName).Trim() -match '^0[xX][0-9A-Fa-f]{64}$')) { $why = 'content has the shape of an AES key' }
     if ($why) { Warn "removing $($f.FullName) ($why)"; Remove-Item $f.FullName -Force; $removed++ }
