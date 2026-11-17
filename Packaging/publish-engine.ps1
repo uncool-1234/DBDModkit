@@ -33,19 +33,25 @@ $LogDir = Join-Path $Root "logs\publish-$Stamp"
 New-Item -ItemType Directory -Force $LogDir | Out-Null
 $Timings = New-Object System.Collections.ArrayList
 
-function Fail($msg) { Write-Host ''; Write-Host "ERROR: $msg" -ForegroundColor Red; try { Stop-Transcript | Out-Null } catch {}; exit 1 }
+# The transcript header records the command line, which can carry -Password.
+function Close-Log {
+  try { Stop-Transcript | Out-Null } catch {}
+  $f = Join-Path $LogDir 'publish.log'
+  if ($Password -and (Test-Path $f)) { [IO.File]::WriteAllText($f, [IO.File]::ReadAllText($f).Replace($Password, '<password>')) }
+}
+function Fail($msg) { Write-Host ''; Write-Host "ERROR: $msg" -ForegroundColor Red; Close-Log; exit 1 }
 function Warn($msg) { Write-Host "WARNING: $msg" -ForegroundColor Yellow }
 function Info($msg) { Write-Host $msg }
 function Head($msg) { Write-Host ''; Write-Host "== $msg" -ForegroundColor Cyan }
 function Ask($prompt) { if ($NonInteractive) { return '' }; (Read-Host $prompt).Trim() }
 # git writes warnings to stderr; with 'Stop' Windows PowerShell would turn them into terminating errors.
-function Git($repo) {
+function GitOut($repo) {
   $ErrorActionPreference = 'Continue'
-  $out = @(& git -C $repo @args 2>&1 | ForEach-Object { "$_" })
+  $out = @(& git.exe -C $repo @args 2>&1 | ForEach-Object { "$_" })
   if ($LASTEXITCODE) { Fail "git -C $repo $($args -join ' '): $($out -join ' ')" }
   $out | Where-Object { $_ -and $_ -notmatch '^warning: ' }
 }
-function Test-Ancestor($repo, $branch) { $ErrorActionPreference = 'Continue'; & git -C $repo merge-base --is-ancestor $branch HEAD 2>$null; $LASTEXITCODE -eq 0 }
+function Test-Ancestor($repo, $branch) { $ErrorActionPreference = 'Continue'; & git.exe -C $repo merge-base --is-ancestor $branch HEAD 2>$null; $LASTEXITCODE -eq 0 }
 
 function Robo($from, $to, [string[]]$opts) {
   $log = Join-Path $LogDir ("robocopy-{0}.log" -f ($Timings.Count))
@@ -123,17 +129,17 @@ if (-not $NonInteractive -and (Ask 'Continue? [Y/n]') -match '^[nN]') { Fail 'ca
 # ---------------------------------------------------------------- preflight
 
 Head 'Preflight'
-$branch = (Git $EngineSource rev-parse --abbrev-ref HEAD) | Select-Object -First 1
+$branch = (GitOut $EngineSource rev-parse --abbrev-ref HEAD) | Select-Object -First 1
 if ($branch -ne $Pkg.engine_branch) { Fail "$EngineSource is on '$branch', expected '$($Pkg.engine_branch)'" }
 foreach ($b in $Pkg.engine_merged_branches) {
   if (-not (Test-Ancestor $EngineSource $b)) { Fail "$b is not merged into $($Pkg.engine_branch)" }
 }
 foreach ($repo in @($EngineSource, $SuzieRoot)) {
-  $dirty = @(Git $repo status --porcelain)
+  $dirty = @(GitOut $repo status --porcelain)
   if ($dirty.Count) { Fail "$repo has uncommitted changes:`n$($dirty -join "`n")" }
 }
-$EngineCommit = (Git $EngineSource rev-parse HEAD) | Select-Object -First 1
-$SuzieCommit = (Git $SuzieRoot rev-parse HEAD) | Select-Object -First 1
+$EngineCommit = (GitOut $EngineSource rev-parse HEAD) | Select-Object -First 1
+$SuzieCommit = (GitOut $SuzieRoot rev-parse HEAD) | Select-Object -First 1
 $Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName"
 $assoc = (Get-Content (Get-ChildItem $Template -Filter *.uproject | Select-Object -First 1).FullName -Raw | ConvertFrom-Json).EngineAssociation
 if ($assoc -ne $Proj.engine_id) { Fail "the template's EngineAssociation '$assoc' differs from project.json engine_id '$($Proj.engine_id)'" }
@@ -158,14 +164,14 @@ if (-not (Done 'build')) {
 $drive = Get-PSDrive -Name (Split-Path -Qualifier $WorkDir).TrimEnd(':')
 if ($drive.Free -lt $need) { Fail ("{0} has {1:N0} GB free, the remaining stages need about {2:N0} GB" -f $WorkDir, ($drive.Free / 1GB), ($need / 1GB)) }
 
-$Tag = @(Git $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" }) | Select-Object -First 1
+$Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" }) | Select-Object -First 1
 if (-not $Tag) {
   $base = "$($Pkg.release_name)-$(Get-Date -Format yyyyMMdd)"; $Tag = $base; $n = 2
-  while (@(Git $EngineSource tag --list $Tag).Count -or @(Git $SuzieRoot tag --list $Tag).Count) { $Tag = "$base-$n"; $n++ }
-  Git $EngineSource tag $Tag | Out-Null
+  while (@(GitOut $EngineSource tag --list $Tag).Count -or @(GitOut $SuzieRoot tag --list $Tag).Count) { $Tag = "$base-$n"; $n++ }
+  GitOut $EngineSource tag $Tag | Out-Null
   Info "Tagged the engine commit $Tag"
 }
-if (-not @(Git $SuzieRoot tag --list $Tag).Count) { Git $SuzieRoot tag $Tag | Out-Null; Info "Tagged the Suzie commit $Tag" }
+if (-not @(GitOut $SuzieRoot tag --list $Tag).Count) { GitOut $SuzieRoot tag $Tag | Out-Null; Info "Tagged the Suzie commit $Tag" }
 
 function Stage($name, [scriptblock]$body, [switch]$Always) {
   Head $name
@@ -220,8 +226,8 @@ Stage 'assemble' {
   Info "Template -> $TemplateOut"
   Robo $Template $TemplateOut @('/MIR', '/XD', 'ModkitData', 'DDC', 'DerivedDataCache', 'Saved', 'Intermediate', 'Binaries')
   Copy-Item $Guide (Join-Path $Release (Split-Path -Leaf $Guide)) -Force
-  $suzieLog = (Git $SuzieRoot log -1 --format='%h %s') | Select-Object -First 1
-  $engineLog = (Git $EngineSource log -1 --format='%h %s') | Select-Object -First 1
+  $suzieLog = (GitOut $SuzieRoot log -1 --format='%h %s') | Select-Object -First 1
+  $engineLog = (GitOut $EngineSource log -1 --format='%h %s') | Select-Object -First 1
   @(
     "$($Pkg.release_name) ($Tag)",
     "Built:            $(Get-Date -Format 'yyyy-MM-dd HH:mm')",
@@ -315,7 +321,7 @@ Stage 'archive' {
   & $SevenZip t "-p$Password" $Archive *> (Join-Path $LogDir '7z-test.log')
   if ($LASTEXITCODE) { Fail "the archive test failed, see $LogDir\7z-test.log" }
   $hash = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
-  Set-Content "$Archive.sha256" "$hash *$(Split-Path -Leaf $Archive)" -Encoding ASCII
+  [IO.File]::WriteAllText("$Archive.sha256", "$hash *$(Split-Path -Leaf $Archive)`n")
   Set-Content "$Archive.password.txt" $Password -Encoding ASCII -NoNewline
 }
 
@@ -333,7 +339,7 @@ if (Test-Path $Archive) {
   Info "Password:  $Archive.password.txt"
 }
 Info "Logs:      $LogDir"
-Stop-Transcript | Out-Null
+Close-Log
 Write-Host ''
 Write-Host "Archive password: $Password" -ForegroundColor Green
 exit 0
