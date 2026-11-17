@@ -1,0 +1,69 @@
+{
+  "release_name": "DBDModkit-5.7.4",
+  "engine_folder": "UnrealEngine-5.7.4-DBD",
+  "engine_branch": "game/dbd",
+  "engine_merged_branches": [
+    "modkit-core"
+  ],
+  "game_version": "10.2.2",
+  "game_plugin": "Plugin/DBDModkitGame",
+  "template": "../../Packaging/DBDMount-Template",
+  "setup_guide": "../../Packaging/SETUP-OTHER-PC.md",
+  "forbidden_files": [
+    "*AES*.txt",
+    "*.jmap",
+    "*.usmap",
+    "*.pak",
+    "*.utoc",
+    "*.ucas",
+    "ModkitLocal.ini"
+  ],
+  "forbidden_folders": [
+    "ModkitData"
+  ],
+  "smoke_test": {
+    "timeout_minutes": 60,
+    "log_checks": [
+      {
+        "name": "installed engine",
+        "pattern": "Installed Engine Build: 1",
+        "count": 1
+      },
+      {
+        "name": "AES key from ModkitData",
+        "pattern": "LogModkit: Display: Loaded AES key from",
+        "count": 1
+      },
+      {
+        "name": "IoStore containers",
+        "pattern": "Mounted IoStore container",
+        "count": 307
+      },
+      {
+        "name": "pak files",
+        "pattern": "Mounted Pak file",
+        "count": 307
+      },
+      {
+        "name": "jmap read",
+        "pattern": "jmap .*: 63026 objects",
+        "count": 1
+      },
+      {
+        "name": "types generated",
+        "pattern": "GENERATE OK .* classes=7592\\(\\+0 existing, 0 failed\\)",
+        "count": 1
+      },
+      {
+        "name": "verify gate (ok >= 10000 of 10163)",
+        "pattern": "VERIFY RESULT: types=10163 ok=10[0-9]{3} ",
+        "count": 1
+      },
+      {
+        "name": "gameplay tags",
+        "pattern": "TAGINFO manager tags=6382 ",
+        "count": 1
+      }
+    ]
+  }
+}

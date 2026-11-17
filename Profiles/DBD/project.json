@@ -1,0 +1,14 @@
+{
+  "engine_id": "DBDModkit-5.7.4",
+  "data_files": [
+    { "key": "KeyFile", "extension": ".txt", "required": true, "description": "text file with the game's AES key (one line, 0x + 64 hex digits)" },
+    { "key": "Jmap", "extension": ".jmap", "required": true, "description": "the game's jmap (JSON reflection dump of the game process, trumank/jmap format)" },
+    { "key": "Usmap", "extension": ".usmap", "required": false, "description": "the game's usmap (only for external tools such as CUE4Parse)" }
+  ],
+  "game": {
+    "name": "Dead by Daylight",
+    "probe": "DeadByDaylight/Content/Paks/global.utoc",
+    "steam_app_id": "381210",
+    "epic_display_name": "Dead by Daylight"
+  }
+}
