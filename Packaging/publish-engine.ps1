@@ -6,8 +6,11 @@
 #   build     BuildGraph "Make Installed Build Win64" (build-installed.cmd)
 #   assemble  trimmed engine, profile, tools, Register Engine.bat, project template, setup guide, VERSION.txt under <WorkDir>\Release
 #   safety    removes forbidden files (game data, key files, machine local ini) from the release folder, checks required files
-#   smoke     optional: project setup and one editor start (verify, tag probe, golden dump) from the release folder
 #   archive   encrypted .7z (AES-256, encrypted file names) with .sha256 and .password.txt next to it
+#   smoke     optional: project setup and one editor start (verify, tag probe, golden dump) from the release folder; runs after the
+#             archive so that nothing the editor writes reaches it; a failure deletes the archive
+# Preflight compiles the Suzie and game plugin modules without unity build and PCH in the dev project before a build.
+# The release tag is created on the engine and Suzie commits once every stage passed.
 #
 # Game specific values come from <profile>\packaging.json and <profile>\project.json.
 # Runs on Windows PowerShell 5.1.
@@ -21,6 +24,7 @@ param(
   [switch]$NoSmokeTest,
   [string]$SmokeData = '',          # a ModkitData folder whose ModkitLocal.ini supplies GameRoot, KeyFile, Jmap; default: the only one in the workspace root
   [string]$UbaHost = '',
+  [string]$DevProject = '',         # .uproject for the compile check; default: the only project in the workspace root with Plugins\Suzie
   [switch]$WithDebugInfo,           # build with full debug info (BuildGraph WithFullDebugInfo=true, full PDBs in the raw build); default: none (-nodebuginfo)
   [switch]$Clean,                   # forget all stage markers and the BuildGraph cache
   [switch]$RemoveBuildFiles,        # after a successful run delete the build copy and the raw installed build
@@ -182,15 +186,32 @@ if (-not (Done 'build')) {
 $drive = Get-PSDrive -Name (Split-Path -Qualifier $WorkDir).TrimEnd(':')
 if ($drive.Free -lt $need) { Fail ("{0} has {1:N0} GB free, the remaining stages need about {2:N0} GB" -f $WorkDir, ($drive.Free / 1GB), ($need / 1GB)) }
 
-# The release tag names one engine commit and one Suzie commit: reuse a tag that is on both HEADs, else create a free name on both.
+# The release tag names one engine commit and one Suzie commit: reuse a tag that is on both HEADs, else a free name, created at the end.
 $both = @(GitOut $SuzieRoot tag --points-at HEAD)
 $Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" -and $both -contains $_ }) | Select-Object -First 1
-if (-not $Tag) {
+$NewTag = -not $Tag
+if ($NewTag) {
   $base = "$($Pkg.release_name)-$(Get-Date -Format yyyyMMdd)"; $Tag = $base; $n = 2
   while (@(GitOut $EngineSource tag --list $Tag).Count -or @(GitOut $SuzieRoot tag --list $Tag).Count) { $Tag = "$base-$n"; $n++ }
-  GitOut $EngineSource tag $Tag | Out-Null
-  GitOut $SuzieRoot tag $Tag | Out-Null
-  Info "Tagged the engine and Suzie commits $Tag"
+}
+Info "Release tag: $Tag$(if ($NewTag) { ' (created when every stage passed)' })"
+
+if (-not (Done 'build')) {
+  # Unity batches and the PCH hide missing includes; the installed build batches differently and fails late on them.
+  if (-not $DevProject) {
+    $devs = @(Get-ChildItem $Root -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'Plugins\Suzie') } | ForEach-Object { Get-ChildItem $_.FullName -Filter *.uproject } | ForEach-Object FullName)
+    if ($devs.Count -ne 1) { Fail "pass -DevProject <uproject> (projects with Plugins\Suzie in $Root`: $($devs.Count))" }
+    $DevProject = $devs[0]
+  }
+  $modules = @(@((Join-Path $SuzieRoot 'Suzie.uplugin'), (Get-ChildItem $GamePlugin -Filter *.uplugin | Select-Object -First 1).FullName) |
+    ForEach-Object { (Get-Content $_ -Raw | ConvertFrom-Json).Modules | ForEach-Object Name })
+  $target = [IO.Path]::GetFileNameWithoutExtension($DevProject) + 'Editor'
+  $clog = Join-Path $LogDir 'compile_check.log'
+  Info "Compile check: $($modules -join ', ') without unity build and PCH ($target)"
+  $cargs = @($target, 'Win64', 'Development', "-Project=$DevProject") + @($modules | ForEach-Object { "-Module=$_" }) + @('-DisableUnity', '-NoPCH', '-WaitMutex')
+  & (Join-Path $EngineSource 'Engine\Build\BatchFiles\Build.bat') @cargs *> $clog
+  if ($LASTEXITCODE) { Fail "the compile check failed (exit $LASTEXITCODE; often a missing #include that unity builds hide), see $clog" }
+  Info 'Compile check passed'
 }
 
 function Stage($name, [scriptblock]$body, [switch]$Always) {
@@ -242,6 +263,10 @@ Stage 'build' {
   if (-not (Test-Path (Join-Path $Installed 'Windows\Engine\Binaries\Win64\UnrealEditor.exe'))) { Fail "no UnrealEditor.exe under $Installed\Windows" }
 }
 
+$Archive = Join-Path $OutDir "$Tag.7z"
+# A new archive needs a fresh release folder (the smoke test writes into the engine folder) and its own smoke test.
+if (-not (Test-Path $Archive)) { foreach ($s in @('assemble', 'archive', 'smoke')) { Remove-Item (Join-Path $StateDir "$s.done") -Force -ErrorAction SilentlyContinue } }
+
 Stage 'assemble' {
   $raw = Join-Path $Installed 'Windows'
   Info "Trimmed engine: $raw -> $EngOut (without *.pdb, *.obj, Documentation, Templates, FeaturePacks)"
@@ -252,8 +277,18 @@ Stage 'assemble' {
   Robo (Join-Path $SuzieRoot 'Tools') (Join-Path $suzieOut 'Tools') @('/MIR', '/XD', 'bin', 'obj', '__pycache__')
   $reg = (Get-Content (Join-Path $PSScriptRoot 'EngineRoot\Register Engine.bat') -Raw).Replace('@ENGINE_ID@', $Proj.engine_id)
   [IO.File]::WriteAllText((Join-Path $EngOut 'Register Engine.bat'), $reg)
-  Info "Template -> $TemplateOut"
-  Robo $Template $TemplateOut @('/MIR', '/XD', 'ModkitData', 'DDC', 'DerivedDataCache', 'Saved', 'Intermediate', 'Binaries')
+  # Only the template's committed files: anything generated in the template folder (ModkitData, tag lists, caches) stays out.
+  if (-not $Template.StartsWith($SuzieRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { Fail "the template $Template is not inside $SuzieRoot" }
+  $tplRel = $Template.Substring($SuzieRoot.Length + 1).Replace('\', '/')
+  $tplFiles = @(GitOut $SuzieRoot ls-files -- $tplRel)
+  if (-not $tplFiles.Count) { Fail "no committed files in the template $Template" }
+  Info "Template ($($tplFiles.Count) committed files) -> $TemplateOut"
+  if (Test-Path $TemplateOut) { Remove-Item $TemplateOut -Recurse -Force }
+  foreach ($f in $tplFiles) {
+    $dst = Join-Path $TemplateOut $f.Substring($tplRel.Length + 1)
+    New-Item -ItemType Directory -Force (Split-Path -Parent $dst) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $SuzieRoot $f) $dst
+  }
   Copy-Item $Guide (Join-Path $Release (Split-Path -Leaf $Guide)) -Force
   $suzieLog = (GitOut $SuzieRoot log -1 --format='%h %s') | Select-Object -First 1
   $engineLog = (GitOut $EngineSource log -1 --format='%h %s') | Select-Object -First 1
@@ -301,6 +336,24 @@ Stage 'safety' -Always {
   Info 'required files present'
 }
 
+Stage 'archive' {
+  if (Test-Path $Archive) { Remove-Item $Archive -Force }
+  Info "Compressing $Release -> $Archive (AES-256, encrypted file names)"
+  & $SevenZip a -t7z -mx=3 -mmt=on -mhe=on "-p$Password" $Archive $Release *> (Join-Path $LogDir '7z.log')
+  if ($LASTEXITCODE) { Fail "7-Zip failed (exit $LASTEXITCODE), see $LogDir\7z.log" }
+  Info 'Testing the archive'
+  & $SevenZip t "-p$Password" $Archive *> (Join-Path $LogDir '7z-test.log')
+  if ($LASTEXITCODE) { Fail "the archive test failed, see $LogDir\7z-test.log" }
+  $hash = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
+  [IO.File]::WriteAllText("$Archive.sha256", "$hash *$(Split-Path -Leaf $Archive)`n")
+  Set-Content "$Archive.password.txt" $Password -Encoding ASCII -NoNewline
+}
+
+function Fail-Smoke($msg) {
+  foreach ($f in @($Archive, "$Archive.sha256", "$Archive.password.txt")) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+  Fail "$msg (the archive was deleted)"
+}
+
 if ($RunSmoke) {
   Stage 'smoke' {
     $proj = Join-Path $WorkDir ("SmokeTest\" + (Split-Path -Leaf $Template))
@@ -313,7 +366,7 @@ if ($RunSmoke) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $proj 'ModkitProject.ps1') -Action setup -NonInteractive
     $rc = $LASTEXITCODE
     Remove-Item Env:\MODKIT_ENGINE
-    if ($rc) { Fail 'project setup failed' }
+    if ($rc) { Fail-Smoke 'project setup failed' }
     $uproject = (Get-ChildItem $proj -Filter *.uproject | Select-Object -First 1).FullName
     $out = Join-Path $LogDir 'smoke'
     New-Item -ItemType Directory -Force $out | Out-Null
@@ -321,9 +374,9 @@ if ($RunSmoke) {
     $golden = Join-Path $EngOut 'Engine\Plugins\Modkit\Suzie\Tools\sweep\golden.ps1'
     Info "Editor start from the release (timeout $($Pkg.smoke_test.timeout_minutes) minutes)"
     & powershell -NoProfile -ExecutionPolicy Bypass -File $golden -Tag smoke -Out $dump -Project $uproject -LogDir $out -TimeoutSec ([int]$Pkg.smoke_test.timeout_minutes * 60)
-    if (Test-Path (Join-Path $out 'smoke.timeout')) { Fail "the editor did not exit within the timeout, see $out\smoke.log" }
+    if (Test-Path (Join-Path $out 'smoke.timeout')) { Fail-Smoke "the editor did not exit within the timeout, see $out\smoke.log" }
     $exit = (Get-Content (Join-Path $out 'smoke.done') -Raw).Trim()
-    if ($exit -ne 'exit=0') { Fail "editor $exit, see $out\smoke.log" }
+    if ($exit -ne 'exit=0') { Fail-Smoke "editor $exit, see $out\smoke.log" }
     $log = Join-Path $out 'smoke.log'
     $bad = 0
     foreach ($c in $Pkg.smoke_test.log_checks) {
@@ -332,28 +385,20 @@ if ($RunSmoke) {
       $want = if ($null -ne $c.count) { "$($c.count)" } else { ">= $($c.min)" }
       if ($ok) { Info "ok   $($c.name): $n" } else { Write-Host "FAIL $($c.name): $n lines match '$($c.pattern)', expected $want" -ForegroundColor Red; $bad++ }
     }
+    # The golden dump carries the type and tag counts (its SUMMARY line); log_checks cover what the dump does not.
     $goldenRef = Join-Path $Prof 'data\golden\golden.txt.gz'
-    if (Test-Path $goldenRef) {
-      & python (Join-Path $SuzieRoot 'Tools\sweep\golden_diff.py') $goldenRef $dump > (Join-Path $out 'golden_diff.txt') 2>&1
-      if ($LASTEXITCODE) { Write-Host "FAIL golden dump differs from $goldenRef, see $out\golden_diff.txt" -ForegroundColor Red; $bad++ } else { Info 'ok   golden dump identical' }
-    }
-    if ($bad) { Fail "$bad smoke test check(s) failed, see $log" }
+    if (-not (Test-Path $goldenRef)) { Fail-Smoke "no golden dump $goldenRef" }
+    & python (Join-Path $SuzieRoot 'Tools\sweep\golden_diff.py') $goldenRef $dump > (Join-Path $out 'golden_diff.txt') 2>&1
+    $summary = (Get-Content $dump -TotalCount 1)
+    if ($LASTEXITCODE) { Write-Host "FAIL golden dump differs from $goldenRef, see $out\golden_diff.txt" -ForegroundColor Red; $bad++ } else { Info "ok   golden dump identical ($summary)" }
+    if ($bad) { Fail-Smoke "$bad smoke test check(s) failed, see $log" }
   }
 }
 
-$Archive = Join-Path $OutDir "$Tag.7z"
-if (-not (Test-Path $Archive)) { Remove-Item (Join-Path $StateDir 'archive.done') -Force -ErrorAction SilentlyContinue }
-Stage 'archive' {
-  if (Test-Path $Archive) { Remove-Item $Archive -Force }
-  Info "Compressing $Release -> $Archive (AES-256, encrypted file names)"
-  & $SevenZip a -t7z -mx=5 -mmt=on -mhe=on "-p$Password" $Archive $Release *> (Join-Path $LogDir '7z.log')
-  if ($LASTEXITCODE) { Fail "7-Zip failed (exit $LASTEXITCODE), see $LogDir\7z.log" }
-  Info 'Testing the archive'
-  & $SevenZip t "-p$Password" $Archive *> (Join-Path $LogDir '7z-test.log')
-  if ($LASTEXITCODE) { Fail "the archive test failed, see $LogDir\7z-test.log" }
-  $hash = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
-  [IO.File]::WriteAllText("$Archive.sha256", "$hash *$(Split-Path -Leaf $Archive)`n")
-  Set-Content "$Archive.password.txt" $Password -Encoding ASCII -NoNewline
+if ($NewTag) {
+  GitOut $EngineSource tag $Tag | Out-Null
+  GitOut $SuzieRoot tag $Tag | Out-Null
+  Info "Tagged the engine and Suzie commits $Tag"
 }
 
 if ($RemoveBuildFiles) {
