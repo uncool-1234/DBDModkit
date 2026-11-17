@@ -20,6 +20,7 @@ param(
   [switch]$NoSmokeTest,
   [string]$SmokeData = '',          # a ModkitData folder whose ModkitLocal.ini supplies GameRoot, KeyFile, Jmap; default: the only one in the workspace root
   [string]$UbaHost = '',
+  [switch]$NoDebugInfo,             # build without debug info (BuildGraph WithFullDebugInfo=false, targets get -nodebuginfo)
   [switch]$Clean,                   # forget all stage markers and the BuildGraph cache
   [switch]$RemoveBuildFiles,        # after a successful run delete the build copy and the raw installed build
   [switch]$NonInteractive
@@ -122,7 +123,8 @@ Info "Suzie:          $SuzieRoot"
 Info "Work folder:    $WorkDir"
 Info "Archive folder: $OutDir"
 Info "Smoke test:     $(if ($RunSmoke) { "yes, game data from $SmokeData" } else { 'no' })"
-Info "pdbcopy:        $(if ($PdbCopy) { $PdbCopy } else { 'not found: symbols are copied unstripped' })"
+Info "Debug info:     $(if ($NoDebugInfo) { 'none (-NoDebugInfo)' } else { 'full' })"
+Info "pdbcopy:        $(if ($PdbCopy) { $PdbCopy } else { 'not found: the strip steps copy symbols unstripped' })"
 Info "Logs:           $LogDir"
 if (-not $NonInteractive -and (Ask 'Continue? [Y/n]') -match '^[nN]') { Fail 'cancelled' }
 
@@ -140,7 +142,7 @@ foreach ($repo in @($EngineSource, $SuzieRoot)) {
 }
 $EngineCommit = (GitOut $EngineSource rev-parse HEAD) | Select-Object -First 1
 $SuzieCommit = (GitOut $SuzieRoot rev-parse HEAD) | Select-Object -First 1
-$Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName"
+$Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName debuginfo=$(-not $NoDebugInfo)"
 $assoc = (Get-Content (Get-ChildItem $Template -Filter *.uproject | Select-Object -First 1).FullName -Raw | ConvertFrom-Json).EngineAssociation
 if ($assoc -ne $Proj.engine_id) { Fail "the template's EngineAssociation '$assoc' differs from project.json engine_id '$($Proj.engine_id)'" }
 if (-not $SevenZip) { Fail '7-Zip (7z.exe) not found' }
@@ -164,14 +166,16 @@ if (-not (Done 'build')) {
 $drive = Get-PSDrive -Name (Split-Path -Qualifier $WorkDir).TrimEnd(':')
 if ($drive.Free -lt $need) { Fail ("{0} has {1:N0} GB free, the remaining stages need about {2:N0} GB" -f $WorkDir, ($drive.Free / 1GB), ($need / 1GB)) }
 
-$Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" }) | Select-Object -First 1
+# The release tag names one engine commit and one Suzie commit: reuse a tag that is on both HEADs, else create a free name on both.
+$both = @(GitOut $SuzieRoot tag --points-at HEAD)
+$Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" -and $both -contains $_ }) | Select-Object -First 1
 if (-not $Tag) {
   $base = "$($Pkg.release_name)-$(Get-Date -Format yyyyMMdd)"; $Tag = $base; $n = 2
   while (@(GitOut $EngineSource tag --list $Tag).Count -or @(GitOut $SuzieRoot tag --list $Tag).Count) { $Tag = "$base-$n"; $n++ }
   GitOut $EngineSource tag $Tag | Out-Null
-  Info "Tagged the engine commit $Tag"
+  GitOut $SuzieRoot tag $Tag | Out-Null
+  Info "Tagged the engine and Suzie commits $Tag"
 }
-if (-not @(GitOut $SuzieRoot tag --list $Tag).Count) { GitOut $SuzieRoot tag $Tag | Out-Null; Info "Tagged the Suzie commit $Tag" }
 
 function Stage($name, [scriptblock]$body, [switch]$Always) {
   Head $name
@@ -193,19 +197,28 @@ Stage 'source' {
   Info "Copying $GamePluginName -> $modkit\$GamePluginName"
   Robo $GamePlugin (Join-Path $modkit $GamePluginName) @('/MIR', '/XD', 'Binaries', 'Intermediate', '__pycache__')
   if (-not $PdbCopy) {
+    # Every Win64 <Strip> step becomes a <Copy> of the same files (Strip needs pdbcopy.exe).
     $xml = Join-Path $Src 'Engine\Build\InstalledEngineBuild.xml'
     $s = [IO.File]::ReadAllText($xml)
-    $re = '<Strip Files="#Strip Tools for Installed Win64"[^>]*/>'
-    if ([regex]::Matches($s, $re).Count -ne 1) { Fail "expected one '#Strip Tools for Installed Win64' step in $xml" }
-    $s = [regex]::Replace($s, $re, '<Copy Files="#Strip Tools for Installed Win64" From="$(RootDir)" To="$(LocalInstalledDir)" Tag="#Installed Build Win64 Files"/>')
+    $re = '<Strip\s[^>]*Platform="Win64"[^>]*/>'
+    $n = [regex]::Matches($s, $re).Count
+    if ($n -eq 0) { Fail "no Win64 Strip step in $xml" }
+    $s = [regex]::Replace($s, $re, {
+      param($m)
+      $a = @{}; foreach ($x in [regex]::Matches($m.Value, '(\w+)="([^"]*)"')) { $a[$x.Groups[1].Value] = $x.Groups[2].Value }
+      if (-not $a.Files -or -not $a.BaseDir -or -not $a.OutputDir) { Fail "unexpected Strip step in $xml`: $($m.Value)" }
+      $t = if ($a.Tag) { " Tag=`"$($a.Tag)`"" } else { '' }
+      "<Copy Files=`"$($a.Files)`" From=`"$($a.BaseDir)`" To=`"$($a.OutputDir)`"$t/>"
+    })
     [IO.File]::WriteAllText($xml, $s)
-    Info 'InstalledEngineBuild.xml of the build copy: the strip step copies symbols unstripped (no pdbcopy.exe)'
+    Info "InstalledEngineBuild.xml of the build copy: $n Win64 strip step(s) copy symbols unstripped (no pdbcopy.exe)"
   }
 }
 
 Stage 'build' {
   Info 'BuildGraph: Make Installed Build Win64 (several hours)'
   $env:BUILD_SRC = $Src; $env:OUT_DIR = $Installed; $env:LOG_DIR = $LogDir; $env:UBA_HOST = $UbaHost; $env:MODKIT_ROOT = $Root
+  $env:WITH_FULL_DEBUG_INFO = if ($NoDebugInfo) { 'false' } else { 'true' }
   & cmd /c "`"$PSScriptRoot\build-installed.cmd`""
   $rc = $LASTEXITCODE
   $log = Join-Path $LogDir 'installed_build.log'
@@ -237,7 +250,7 @@ Stage 'assemble' {
     "Game version:     $($Pkg.game_version)",
     "Engine folder:    $($Pkg.engine_folder) (registered as $($Proj.engine_id) by 'Register Engine.bat' or 'Setup Project.bat')",
     "Not included:     debug symbols (*.pdb), *.obj, engine Documentation, Templates and FeaturePacks, the game's files, the AES key, the jmap",
-    "Symbols:          $(if ($PdbCopy) { 'stripped by pdbcopy, then removed' } else { 'removed' })"
+    "Symbols:          $(if ($NoDebugInfo) { 'none (built without debug info)' } else { 'removed from the release; full PDBs stay in the raw installed build' })"
   ) | Set-Content (Join-Path $Release 'VERSION.txt') -Encoding ASCII
 }
 
