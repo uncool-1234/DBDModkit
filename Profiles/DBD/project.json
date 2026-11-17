@@ -7,8 +7,6 @@
   ],
   "game": {
     "name": "Dead by Daylight",
-    "probe": "DeadByDaylight/Content/Paks/global.utoc",
-    "steam_app_id": "381210",
-    "epic_display_name": "Dead by Daylight"
+    "probe": "DeadByDaylight/Content/Paks/global.utoc"
   }
 }

@@ -1,5 +1,5 @@
 # Project setup and editor start of a modkit project, called by "Setup Project.bat" (-Action setup) and "Start Editor.bat" (-Action start).
-# setup writes ModkitData\ModkitLocal.ini: the engine, the profile, the game install and the user supplied files in ModkitData.
+# setup writes ModkitData\ModkitLocal.ini: the engine, the profile, the game install (always asked) and the user supplied files in ModkitData.
 # start launches the editor with the paths from that file. Editor arguments come from MODKIT_EDITOR_ARGS (the .bat passes %* through it,
 # because PowerShell would try to bind editor switches such as -foo as script parameters).
 # Runs on Windows PowerShell 5.1.
@@ -95,33 +95,6 @@ function Choose($title, $items) {
   }
 }
 
-function Find-GameInstalls($game) {
-  $found = @()
-  $steam = (Get-ItemProperty -LiteralPath 'HKCU:\Software\Valve\Steam' -ErrorAction SilentlyContinue).SteamPath
-  if ($steam -and $game.steam_app_id) {
-    $libs = @($steam)
-    $vdf = Join-Path $steam 'steamapps\libraryfolders.vdf'
-    if (Test-Path -LiteralPath $vdf) {
-      foreach ($l in Get-Content -LiteralPath $vdf) { if ($l -match '^\s*"path"\s+"(.+)"') { $libs += $matches[1].Replace('\\', '\') } }
-    }
-    foreach ($lib in ($libs | Select-Object -Unique)) {
-      $acf = Join-Path $lib "steamapps\appmanifest_$($game.steam_app_id).acf"
-      if (Test-Path -LiteralPath $acf) {
-        $m = Select-String -LiteralPath $acf -Pattern '^\s*"installdir"\s+"(.+)"' | Select-Object -First 1
-        if ($m) { $found += ,@((Join-Path $lib "steamapps\common\$($m.Matches[0].Groups[1].Value)"), 'Steam') }
-      }
-    }
-  }
-  if ($game.epic_display_name) {
-    $man = Join-Path $env:ProgramData 'Epic\EpicGamesLauncher\Data\Manifests'
-    foreach ($f in Get-ChildItem -LiteralPath $man -Filter *.item -ErrorAction SilentlyContinue) {
-      try { $j = Get-Content -LiteralPath $f.FullName -Raw | ConvertFrom-Json } catch { continue }
-      if ($j.DisplayName -eq $game.epic_display_name -and $j.InstallLocation) { $found += ,@($j.InstallLocation, 'Epic Games') }
-    }
-  }
-  $found
-}
-
 function Test-GameRoot($game, $d) { $d -and (Test-Path -LiteralPath (Join-Path $d $game.probe)) }
 
 function Invoke-Setup {
@@ -189,27 +162,20 @@ function Invoke-Setup {
     if ($v) { $values[$df.key] = $v }
   }
 
-  # Game install
+  # Game install: always asked; Enter keeps a valid GameRoot of the existing ini. -NonInteractive keeps it without asking.
   $game = $spec.game
+  $cur = if (Test-GameRoot $game $local['GameRoot']) { Full $local['GameRoot'] } else { $null }
   $root = $null
-  if (Test-GameRoot $game $local['GameRoot']) { $root = Full $local['GameRoot']; Info "GameRoot: $root (existing ModkitLocal.ini)" }
-  else {
-    $found = @(Find-GameInstalls $game | Where-Object { Test-GameRoot $game $_[0] })
-    $paths = @($found | ForEach-Object { Full $_[0] } | Select-Object -Unique)
-    if ($paths.Count -ge 1) {
-      $root = Choose "$($game.name) installs found:" $paths
-      $via = @($found | Where-Object { (Full $_[0]) -eq $root } | ForEach-Object { $_[1] })[0]
-      Info "GameRoot: $root (found via $via)"
-    }
-    else {
-      Info "$($game.name) was not found in the Steam or Epic Games libraries."
-      while (-not $root) {
-        $p = Ask "Path of the $($game.name) install folder (it contains $($game.probe.Replace('/', '\')))"
-        if (Test-GameRoot $game $p) { $root = Full $p } else { Warn "'$p' does not contain $($game.probe)" }
-      }
-      Info "GameRoot: $root"
-    }
+  if ($NonInteractive -and $cur) { $root = $cur }
+  while (-not $root) {
+    $prompt = "Path of the $($game.name) install folder (it contains $($game.probe.Replace('/', '\')))"
+    if ($cur) { $prompt += " [Enter: $cur]" }
+    $p = Ask $prompt
+    if (-not $p -and $cur) { $root = $cur }
+    elseif (Test-GameRoot $game $p) { $root = Full $p }
+    else { Warn "'$p' does not contain $($game.probe)" }
   }
+  Info "GameRoot: $root"
 
   # Write, keeping lines this script does not manage (other keys, comments).
   $managed = @('Profile', 'EngineDir', 'GameRoot') + @($spec.data_files | ForEach-Object { $_.key })
