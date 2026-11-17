@@ -14,5 +14,7 @@ if defined UBA_HOST set "UBA_ARGS=-UBA -UBAHost=%UBA_HOST% -UBAPort=1345 -UBAPri
 cd /d "%BUILD_SRC%"
 echo START %DATE% %TIME% > "%LOG_DIR%\installed_build.time"
 call Engine\Build\BatchFiles\RunUAT.bat BuildGraph -target="Make Installed Build Win64" -script=Engine/Build/InstalledEngineBuild.xml -set:HostPlatformOnly=true -set:WithWin64=true -set:WithClient=true -set:WithServer=true "-set:GameConfigurations=Development;Shipping" -set:WithDDC=false -set:WithFullDebugInfo=true -set:IncludeDocs=true "-set:BuiltDirectory=%OUT_DIR%" "-set:ExtraCompileArgs=%UBA_ARGS%" -WaitMutex -NoP4 > "%LOG_DIR%\installed_build.log" 2>&1
-echo EXIT %ERRORLEVEL% >> "%LOG_DIR%\installed_build.time"
+set "RC=%ERRORLEVEL%"
+echo EXIT %RC% >> "%LOG_DIR%\installed_build.time"
 echo END %DATE% %TIME% >> "%LOG_DIR%\installed_build.time"
+exit /b %RC%
