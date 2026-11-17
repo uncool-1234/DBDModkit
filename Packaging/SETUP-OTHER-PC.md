@@ -172,9 +172,9 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 ## 11. Another game profile or game version
 
 * Everything game specific is **data in a profile folder** (`Suzie\Profiles\<Game>`: `engine.ini` for the engine, `profile.json` + `schema/`, `load/`, `tags/` for Suzie, optional `Plugin/<GamePlugin>` with the only game code). Switch with `Profile=` in `ModkitLocal.ini` (or `-ModkitProfile=`).
-* This installed build is the `game/dbd` branch: besides the generic hooks it contains the DBD 10.2.2 uniform buffer layouts and a `FShaderMapContent` +8 byte field. A second game generally needs its own engine branch and installed build; only games whose shader layouts equal the engine's can reuse it with another profile.
+* This installed build is the `game/dbd` branch: besides the generic hooks it contains a `FShaderMapContent` +8 byte field. The DBD 10.2.2 uniform buffer layouts are data in the profile (`uniform_layouts.txt`). A second game needs its own `uniform_layouts.txt` when its uniform buffer layouts differ, and its own engine branch and installed build when engine struct sizes differ.
 * New game: create `Profiles/<G2>` from the DBD profile (copy `engine.ini`, `profile.json`, `load/skip.json`, `tags/tags.json`), obtain the game's jmap, set `ModkitLocal.ini` (`Jmap=`), run `Suzie.VerifyNativeTypes`, run the sweep harness.
-* New DBD version: set `Jmap=` to the jmap of the new version and restart; types, schema recipes and gameplay tags follow from it. The asset registry follows from the game install; re-check layouts if the shader parameter structs changed.
+* New DBD version: set `Jmap=` to the jmap of the new version and restart; types, schema recipes and gameplay tags follow from it. The asset registry follows from the game install. If the game changed its uniform buffer layouts, the profile needs a new `uniform_layouts.txt` (a developer step from a minidump of the game).
 
 ## 12. The jmap (you provide it)
 
