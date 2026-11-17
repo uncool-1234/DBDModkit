@@ -50,7 +50,7 @@ The folder is the engine; there is no installer.
 ## 3. The game files (you provide them)
 
 * Install Dead by Daylight yourself (Steam). The shipped profile and the shader layouts of this build are for **version 10.2.2**; a newer game needs its own jmap ([section 10](#10-another-game-profile-or-game-version)).
-* `GameRoot` in `ModkitData\ModkitLocal.ini` (written by `Setup Project.bat`, which finds the Steam and Epic Games installs itself) is the folder that contains `DeadByDaylight\Content\Paks` (for example `C:/Program Files (x86)/Steam/steamapps/common/Dead by Daylight`). `Paks` holds 614 containers (307 `.utoc/.ucas` + 307 `.pak`), `global.utoc`, `pakchunk0-Windows.utoc`, ...
+* `GameRoot` in `ModkitData\ModkitLocal.ini` (written by `Setup Project.bat`, which asks for it) is the folder that contains `DeadByDaylight\Content\Paks` (for example `C:/Program Files (x86)/Steam/steamapps/common/Dead by Daylight`). `Paks` holds 614 containers (307 `.utoc/.ucas` + 307 `.pak`), `global.utoc`, `pakchunk0-Windows.utoc`, ...
 * The editor only **reads** the game. Never start the game while the editor runs against the same files.
 
 ## 4. The AES key (you provide it)
@@ -68,7 +68,7 @@ The machine specific paths live in one file, `<project>\ModkitData\ModkitLocal.i
 2. Run `Setup Project.bat`. It finds
    * the engine: `MODKIT_ENGINE`, else `EngineDir` of an existing ini, else the `.uproject` `EngineAssociation` (a path, or an id registered under `HKCU\Software\Epic Games\Unreal Engine\Builds`), else a folder next to the project that contains `Engine\Binaries\Win64\UnrealEditor.exe`; otherwise it asks. When the association is an id that is not registered to that engine, it offers to register it (not when `MODKIT_ENGINE` is set);
    * the profile: `Profiles\<name>` (with `profile.json`, `engine.ini`, `project.json`) under `<engine>\Engine\Plugins\Modkit\Suzie`; it asks when there are several;
-   * the game: the existing `GameRoot`, else the Steam and Epic Games launcher installs. A candidate must contain `DeadByDaylight\Content\Paks\global.utoc`; otherwise it asks.
+   * the game: it always asks for the install folder (Enter keeps the `GameRoot` of an existing ini); the folder must contain `DeadByDaylight\Content\Paks\global.utoc`.
 3. It writes `ModkitData\ModkitLocal.ini` (UTF-8, forward slashes). Other keys and comments already in the file are kept. Run `Setup Project.bat` again after moving the engine, the game or the files.
 
 ```ini
