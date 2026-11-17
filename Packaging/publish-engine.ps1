@@ -20,7 +20,7 @@ param(
   [switch]$NoSmokeTest,
   [string]$SmokeData = '',          # a ModkitData folder whose ModkitLocal.ini supplies GameRoot, KeyFile, Jmap; default: the only one in the workspace root
   [string]$UbaHost = '',
-  [switch]$NoDebugInfo,             # build without debug info (BuildGraph WithFullDebugInfo=false, targets get -nodebuginfo)
+  [switch]$WithDebugInfo,           # build with full debug info (BuildGraph WithFullDebugInfo=true, full PDBs in the raw build); default: none (-nodebuginfo)
   [switch]$Clean,                   # forget all stage markers and the BuildGraph cache
   [switch]$RemoveBuildFiles,        # after a successful run delete the build copy and the raw installed build
   [switch]$NonInteractive
@@ -123,7 +123,7 @@ Info "Suzie:          $SuzieRoot"
 Info "Work folder:    $WorkDir"
 Info "Archive folder: $OutDir"
 Info "Smoke test:     $(if ($RunSmoke) { "yes, game data from $SmokeData" } else { 'no' })"
-Info "Debug info:     $(if ($NoDebugInfo) { 'none (-NoDebugInfo)' } else { 'full' })"
+Info "Debug info:     $(if ($WithDebugInfo) { 'full (-WithDebugInfo)' } else { 'none' })"
 Info "pdbcopy:        $(if ($PdbCopy) { $PdbCopy } else { 'not found: the strip steps copy symbols unstripped' })"
 Info "Logs:           $LogDir"
 if (-not $NonInteractive -and (Ask 'Continue? [Y/n]') -match '^[nN]') { Fail 'cancelled' }
@@ -142,7 +142,7 @@ foreach ($repo in @($EngineSource, $SuzieRoot)) {
 }
 $EngineCommit = (GitOut $EngineSource rev-parse HEAD) | Select-Object -First 1
 $SuzieCommit = (GitOut $SuzieRoot rev-parse HEAD) | Select-Object -First 1
-$Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName debuginfo=$(-not $NoDebugInfo)"
+$Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName debuginfo=$([bool]$WithDebugInfo)"
 $assoc = (Get-Content (Get-ChildItem $Template -Filter *.uproject | Select-Object -First 1).FullName -Raw | ConvertFrom-Json).EngineAssociation
 if ($assoc -ne $Proj.engine_id) { Fail "the template's EngineAssociation '$assoc' differs from project.json engine_id '$($Proj.engine_id)'" }
 if (-not $SevenZip) { Fail '7-Zip (7z.exe) not found' }
@@ -218,7 +218,7 @@ Stage 'source' {
 Stage 'build' {
   Info 'BuildGraph: Make Installed Build Win64 (several hours)'
   $env:BUILD_SRC = $Src; $env:OUT_DIR = $Installed; $env:LOG_DIR = $LogDir; $env:UBA_HOST = $UbaHost; $env:MODKIT_ROOT = $Root
-  $env:WITH_FULL_DEBUG_INFO = if ($NoDebugInfo) { 'false' } else { 'true' }
+  $env:WITH_FULL_DEBUG_INFO = if ($WithDebugInfo) { 'true' } else { 'false' }
   & cmd /c "`"$PSScriptRoot\build-installed.cmd`""
   $rc = $LASTEXITCODE
   $log = Join-Path $LogDir 'installed_build.log'
@@ -250,7 +250,7 @@ Stage 'assemble' {
     "Game version:     $($Pkg.game_version)",
     "Engine folder:    $($Pkg.engine_folder) (registered as $($Proj.engine_id) by 'Register Engine.bat' or 'Setup Project.bat')",
     "Not included:     debug symbols (*.pdb), *.obj, engine Documentation, Templates and FeaturePacks, the game's files, the AES key, the jmap",
-    "Symbols:          $(if ($NoDebugInfo) { 'none (built without debug info)' } else { 'removed from the release; full PDBs stay in the raw installed build' })"
+    "Symbols:          $(if ($WithDebugInfo) { 'removed from the release; full PDBs stay in the raw installed build' } else { 'none (built without debug info)' })"
   ) | Set-Content (Join-Path $Release 'VERSION.txt') -Encoding ASCII
 }
 
