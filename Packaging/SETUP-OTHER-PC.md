@@ -138,7 +138,7 @@ LogModkit: Display: Loaded AES key from '...' (value not logged).
 LogPakFile: Display: Mounted IoStore container ... (307 times) and Mounted Pak file ... (307 times) + the global container
 LogAssetRegistry: Premade AssetRegistry loaded from '../../../DeadByDaylight/AssetRegistry.bin'
 LogInit: Display: Modkit: opened shader library 'DeadByDaylight': yes (total shaders in library: 164124, library enabled: 1)
-LogInit: Display: Modkit: registered 238 game plugin content roots (238 .uplugin files found, 0 outside their scan root and mapped to their own folder), project plugins folder: <Project>/Plugins/
+LogInit: Display: Modkit: registered 238 game plugin content roots (238 .uplugin files found, 0 outside their scan root and mapped to their own folder), 239 container directories recorded, project plugins folder: <Project>/Plugins/
 LogSuzie: jmap <file>: 63026 objects, parse 8.1s, derive 1.1s
 LogSuzie: GENERATE OK ... enums=1099(+20 existing) structs=2571 ... classes=7592 ... functions=14459 properties=59194 ... overrides=50/160/0
 LogSuzie: Gameplay tags written from the jmap: N tags, M redirects
