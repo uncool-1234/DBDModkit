@@ -36,7 +36,7 @@ The asset registry and the gameplay tags need no step (section 6).
 | .NET / Python | Only for helper tools: Python 3 (sweep scripts). The editor needs neither. |
 | GPU | D3D12 capable with Shader Model 5 (GTX 900 / RX 400 or newer, recent driver). The editor runs with `-d3d12 -sm5`; the cooked shaders exist only as `PCD3D_SM5`. Vulkan and SM6 cannot use them. |
 | RAM | 16 GB works; 32 GB is more comfortable for shader compile workers. |
-| Disk | The extracted engine is about 28 GB (Development editor, client/server/game targets for Development and Shipping; no debug symbols, engine documentation, templates or prebuilt DDC), plus the project DDC (a few GB after first start). The game is about 60 to 70 GB. |
+| Disk | The extracted engine is about 28 GB (Development editor, game target for Development and Shipping; no debug symbols, engine documentation, templates or prebuilt DDC), plus the project DDC (a few GB after first start). The game is about 60 to 70 GB. |
 | Game | Dead by Daylight **10.2.2**, the version the shader layouts of this build match. Another version needs the jmap of that version and can show layout differences. |
 
 ## 2. Engine registration
