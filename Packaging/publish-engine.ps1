@@ -59,10 +59,84 @@ function GitOut($repo) {
 }
 function Test-Ancestor($repo, $branch) { $ErrorActionPreference = 'Continue'; & git.exe -C $repo merge-base --is-ancestor $branch HEAD 2>$null; $LASTEXITCODE -eq 0 }
 
+function Join-Args([string[]]$list) { ($list | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }) -join ' ' }
+
+# Progress of a running program, read from the log it writes. Recognised lines: BuildGraph nodes ("****** [n/m] Node"),
+# UBT actions ("[n/m] Compile ..."), BuildGraph copies, 7-Zip percentages, robocopy file lines and editor log lines; any
+# other line is shown as the latest output.
+function Update-WatchState($s, [string]$line) {
+  $line = $line.Trim()
+  if (-not $line) { return }
+  if ($line -match '^\*{6} \[(\d+/\d+)\] (.+)$') { $s.Node = "[$($Matches[1])] $($Matches[2])"; $s.Action = ''; return }
+  if ($line -match '^\[(\d+/\d+)\] (.+)$') { $s.Action = "[$($Matches[1])] $($Matches[2])"; return }
+  if ($line -match '^Copying (\d+) files from .+ to (.+?)\.*$') { $s.Action = "copying $($Matches[1]) files to $($Matches[2])"; return }
+  if ($line -match '^(\d{1,3})%\s*(?:\d+\s*)?(?:[+=UT-]\s+)?(.*)$') { $s.Action = "$($Matches[1])% $($Matches[2])"; return }
+  if ($line -match '^(New File|Newer|Older|Changed|\*EXTRA File)\b') { $s.Files++; $s.Action = "$($s.Files) files, $(($line -split "`t")[-1].Trim())"; return }
+  if ($line -match '^\[\d{4}\.\d\d\.\d\d-[\d.:]+\]\[\s*\d+\](.+)$') { $line = $Matches[1] }
+  $s.Last = $line
+}
+
+# Runs a program, waits for it and prints what it is doing while it runs: a line whenever the status read from
+# $WatchLog changes (at most every 5 s) and at least every 30 s. Returns the exit code. stdout and stderr go to $OutLog.
+# -FromEnd ignores what $WatchLog holds when the program starts.
+function Invoke-Watched {
+  param([string]$Label, [string]$FilePath, [string]$Arguments, [string]$OutLog, [string]$WatchLog = '',
+        [switch]$FromEnd)
+  if (-not $WatchLog) { $WatchLog = $OutLog }
+  $pos = 0L
+  if ($FromEnd -and (Test-Path -LiteralPath $WatchLog)) { $pos = (Get-Item -LiteralPath $WatchLog).Length }
+  $p = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru -RedirectStandardOutput $OutLog -RedirectStandardError "$OutLog.err"
+  $null = $p.Handle
+  $s = @{ Node = ''; Action = ''; Last = ''; Files = 0 }
+  $carry = ''; $t0 = Get-Date; $shown = ''; $lastPrint = [datetime]::MinValue
+  $width = try { [Math]::Max(80, $Host.UI.RawUI.WindowSize.Width - 1) } catch { 160 }
+  while ($true) {
+    $exited = $p.WaitForExit(1000)
+    if (Test-Path -LiteralPath $WatchLog) {
+      try {
+        $fs = [IO.File]::Open($WatchLog, 'Open', 'Read', 'ReadWrite, Delete')
+        try {
+          if ($fs.Length -lt $pos) { $pos = 0; $carry = '' }
+          $bom = New-Object byte[] 2
+          $unicode = $fs.Read($bom, 0, 2) -eq 2 -and $bom[0] -eq 0xFF -and $bom[1] -eq 0xFE
+          $enc = if ($unicode) { [Text.Encoding]::Unicode } else { [Text.Encoding]::UTF8 }
+          $n = [int][Math]::Min($fs.Length - $pos, 4MB)
+          if ($unicode) { $n -= $n % 2 }
+          if ($n -gt 0) {
+            $buf = New-Object byte[] $n
+            [void]$fs.Seek($pos, 'Begin'); $n = $fs.Read($buf, 0, $n); $pos += $n
+            $parts = ($carry + $enc.GetString($buf, 0, $n)) -split "[\r\n\b]+"
+            $carry = $parts[-1]
+            for ($i = 0; $i -lt $parts.Count - 1; $i++) { Update-WatchState $s $parts[$i] }
+            if ($carry -match '^\s*\d{1,3}%') { Update-WatchState $s $carry }
+          }
+        } finally { $fs.Dispose() }
+      } catch {}
+    }
+    if ($exited) { break }
+    $status = @($s.Node, $(if ($s.Action) { $s.Action } else { $s.Last })) | Where-Object { $_ }
+    $status = $status -join ' | '
+    $now = Get-Date
+    if (($status -ne $shown -and ($now - $lastPrint).TotalSeconds -ge 5) -or ($now - $lastPrint).TotalSeconds -ge 30) {
+      $e = $now - $t0
+      $line = '  {0,3}:{1:00} {2}  {3}' -f [int][Math]::Floor($e.TotalMinutes), $e.Seconds, $Label, $(if ($status) { $status } else { 'running' })
+      if ($line.Length -gt $width) { $line = $line.Substring(0, $width - 3) + '...' }
+      Write-Host $line -ForegroundColor DarkGray
+      $shown = $status; $lastPrint = $now
+    }
+  }
+  $p.WaitForExit()
+  $err = "$OutLog.err"
+  if ((Test-Path $err) -and (Get-Item $err).Length) { Get-Content $err | Add-Content $OutLog }
+  Remove-Item $err -Force -ErrorAction SilentlyContinue
+  $p.ExitCode
+}
+
 function Robo($from, $to, [string[]]$opts) {
   $log = Join-Path $LogDir ("robocopy-{0}.log" -f ($Timings.Count))
-  & robocopy $from $to @opts /NP /NFL /NDL "/UNILOG+:$log" | Out-Null
-  if ($LASTEXITCODE -ge 8) { Fail "robocopy $from -> $to failed (exit $LASTEXITCODE), see $log" }
+  $rc = Invoke-Watched -Label 'robocopy' -FilePath robocopy.exe -Arguments (Join-Args (@($from, $to) + $opts + @('/NP', '/NDL', "/UNILOG+:$log"))) -OutLog "$log.out" -WatchLog $log -FromEnd
+  Remove-Item "$log.out" -Force -ErrorAction SilentlyContinue
+  if ($rc -ge 8) { Fail "robocopy $from -> $to failed (exit $rc), see $log" }
 }
 
 function New-Password {
@@ -209,13 +283,15 @@ if (-not (Done 'build')) {
   $clog = Join-Path $LogDir 'compile_check.log'
   Info "Compile check: $($modules -join ', ') without unity build and PCH ($target)"
   $cargs = @($target, 'Win64', 'Development', "-Project=$DevProject") + @($modules | ForEach-Object { "-Module=$_" }) + @('-DisableUnity', '-NoPCH', '-WaitMutex')
-  & (Join-Path $EngineSource 'Engine\Build\BatchFiles\Build.bat') @cargs *> $clog
-  if ($LASTEXITCODE) { Fail "the compile check failed (exit $LASTEXITCODE; often a missing #include that unity builds hide), see $clog" }
+  $rc = Invoke-Watched -Label 'compile check' -FilePath (Join-Path $EngineSource 'Engine\Build\BatchFiles\Build.bat') -Arguments (Join-Args $cargs) -OutLog $clog
+  if ($rc) { Fail "the compile check failed (exit $rc; often a missing #include that unity builds hide), see $clog" }
   Info 'Compile check passed'
 }
 
+$StageNames = @('source', 'build', 'assemble', 'safety', 'archive') + @(if ($RunSmoke) { 'smoke' })
+$RunStart = Get-Date
 function Stage($name, [scriptblock]$body, [switch]$Always) {
-  Head $name
+  Head ("{0} (stage {1} of {2}, {3:N0} min since start, {4:HH:mm})" -f $name, ([array]::IndexOf($StageNames, $name) + 1), $StageNames.Count, ((Get-Date) - $RunStart).TotalMinutes, (Get-Date))
   if (-not $Always -and (Done $name)) { Info 'done in an earlier run, skipped'; [void]$Timings.Add([pscustomobject]@{ Stage = $name; Result = 'skipped'; Minutes = 0 }); return }
   $t = Get-Date
   & $body
@@ -256,10 +332,15 @@ Stage 'build' {
   Info 'BuildGraph: Make Installed Build Win64 (several hours)'
   $env:BUILD_SRC = $Src; $env:OUT_DIR = $Installed; $env:LOG_DIR = $LogDir; $env:UBA_HOST = $UbaHost; $env:MODKIT_ROOT = $Root
   $env:WITH_FULL_DEBUG_INFO = if ($WithDebugInfo) { 'true' } else { 'false' }
-  & cmd /c "`"$PSScriptRoot\build-installed.cmd`""
-  $rc = $LASTEXITCODE
   $log = Join-Path $LogDir 'installed_build.log'
+  $rc = Invoke-Watched -Label 'build' -FilePath $env:ComSpec -Arguments "/d /c `"$PSScriptRoot\build-installed.cmd`"" -OutLog (Join-Path $LogDir 'build-installed.out') -WatchLog $log
   if ($rc -ne 0 -or -not (Select-String -Path $log -Pattern 'BUILD SUCCESSFUL' -SimpleMatch -Quiet)) { Fail "the installed build failed (exit $rc), see $log" }
+  $limits = @(Select-String -Path $log -Pattern 'limiting max parallel actions to (\d+)' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+  if (@($limits | Where-Object { $_ -lt 3 }).Count) { Warn "UBT ran as few as $(($limits | Measure-Object -Minimum).Minimum) local action(s) in parallel for lack of free memory (see 'limiting max parallel actions' in $log)" }
+  if ($UbaHost) {
+    $remote = (@(Select-String -Path $log -Pattern 'Remote processes finished\s+(\d+)' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }) | Measure-Object -Sum).Sum
+    Info "UBA helpers ran $remote action(s)"
+  }
   if (-not (Test-Path (Join-Path $Installed 'Windows\Engine\Binaries\Win64\UnrealEditor.exe'))) { Fail "no UnrealEditor.exe under $Installed\Windows" }
 }
 
@@ -339,11 +420,12 @@ Stage 'safety' -Always {
 Stage 'archive' {
   if (Test-Path $Archive) { Remove-Item $Archive -Force }
   Info "Compressing $Release -> $Archive (AES-256, encrypted file names)"
-  & $SevenZip a -t7z -mx=3 -mmt=on -mhe=on "-p$Password" $Archive $Release *> (Join-Path $LogDir '7z.log')
-  if ($LASTEXITCODE) { Fail "7-Zip failed (exit $LASTEXITCODE), see $LogDir\7z.log" }
+  $rc = Invoke-Watched -Label '7z' -FilePath $SevenZip -Arguments (Join-Args @('a', '-t7z', '-mx=3', '-mmt=on', '-mhe=on', '-bsp1', "-p$Password", $Archive, $Release)) -OutLog (Join-Path $LogDir '7z.log')
+  if ($rc) { Fail "7-Zip failed (exit $rc), see $LogDir\7z.log" }
   Info 'Testing the archive'
-  & $SevenZip t "-p$Password" $Archive *> (Join-Path $LogDir '7z-test.log')
-  if ($LASTEXITCODE) { Fail "the archive test failed, see $LogDir\7z-test.log" }
+  $rc = Invoke-Watched -Label '7z test' -FilePath $SevenZip -Arguments (Join-Args @('t', '-bsp1', "-p$Password", $Archive)) -OutLog (Join-Path $LogDir '7z-test.log')
+  if ($rc) { Fail "the archive test failed, see $LogDir\7z-test.log" }
+  Info 'SHA-256 of the archive'
   $hash = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
   [IO.File]::WriteAllText("$Archive.sha256", "$hash *$(Split-Path -Leaf $Archive)`n")
   Set-Content "$Archive.password.txt" $Password -Encoding ASCII -NoNewline
@@ -373,7 +455,9 @@ if ($RunSmoke) {
     $dump = Join-Path $out 'golden.txt'
     $golden = Join-Path $EngOut 'Engine\Plugins\Modkit\Suzie\Tools\sweep\golden.ps1'
     Info "Editor start from the release (timeout $($Pkg.smoke_test.timeout_minutes) minutes)"
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $golden -Tag smoke -Out $dump -Project $uproject -LogDir $out -TimeoutSec ([int]$Pkg.smoke_test.timeout_minutes * 60)
+    $editorLog = Join-Path $proj ("Saved\Logs\" + [IO.Path]::GetFileNameWithoutExtension($uproject) + '.log')
+    $gargs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $golden, '-Tag', 'smoke', '-Out', $dump, '-Project', $uproject, '-LogDir', $out, '-TimeoutSec', ([int]$Pkg.smoke_test.timeout_minutes * 60))
+    [void](Invoke-Watched -Label 'editor' -FilePath powershell.exe -Arguments (Join-Args $gargs) -OutLog (Join-Path $out 'golden-run.log') -WatchLog $editorLog -FromEnd)
     if (Test-Path (Join-Path $out 'smoke.timeout')) { Fail-Smoke "the editor did not exit within the timeout, see $out\smoke.log" }
     $exit = (Get-Content (Join-Path $out 'smoke.done') -Raw).Trim()
     if ($exit -ne 'exit=0') { Fail-Smoke "editor $exit, see $out\smoke.log" }
