@@ -2,7 +2,7 @@
 #
 # Stages (each writes a marker under <WorkDir>\state and is skipped on the next run while its inputs are unchanged: source and build
 # depend on the engine commit and the compiled Suzie and game plugin files, the later stages on the engine and Suzie commits):
-#   source    copy of the engine tree without .git/Intermediate/Saved, plus Suzie and the profile's game plugin under Engine\Plugins\Modkit
+#   source    copy of the engine tree without .git/Intermediate/Saved and with only the build inputs of Binaries/bin/obj folders, plus Suzie and the profile's game plugin under Engine\Plugins\Modkit
 #   build     BuildGraph "Make Installed Build Win64" (build-installed.cmd)
 #   assemble  trimmed engine, profile, tools, Register Engine.bat, project template, setup guide, VERSION.txt under <WorkDir>\Release
 #   safety    removes forbidden files (game data, key files, machine local ini) from the release folder, checks required files
@@ -301,10 +301,49 @@ function Stage($name, [scriptblock]$body, [switch]$Always) {
 
 # ---------------------------------------------------------------- stages
 
+# Folders named Binaries (C++ build output) and bin/obj (C# build output) hold build inputs and build outputs side by
+# side. Only the inputs are copied: files tracked by git and files installed by Setup (.uedependencies). The build copy
+# keeps its own outputs: outputs of the source tree's dev build in their place make UBT relink every module and
+# AutomationTool rebuild its C# tools.
+$OutputDirNames = @('Binaries', 'bin', 'obj')
+function Copy-BinariesInputs {
+  $rels = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+  $specs = $OutputDirNames | ForEach-Object { ":(glob,icase)**/$_/**" }
+  foreach ($f in (GitOut $EngineSource -c core.quotepath=false ls-files -- @specs)) { [void]$rels.Add($f) }
+  $deps = Join-Path $EngineSource '.uedependencies'
+  if (-not (Test-Path $deps)) { Fail "$deps does not exist (written by the engine's Setup)" }
+  $re = '(^|/)(' + ($OutputDirNames -join '|') + ')/'
+  $r = [Xml.XmlReader]::Create($deps)
+  try { while ($r.ReadToFollowing('File')) { $n = $r.GetAttribute('Name'); if ($n -match $re) { [void]$rels.Add($n) } } } finally { $r.Dispose() }
+  Info "Inputs in $($OutputDirNames -join '/') folders: $($rels.Count) files tracked by git or installed by Setup"
+  $copied = 0; $i = 0; $t0 = Get-Date; $last = $t0
+  foreach ($rel in $rels) {
+    $i++
+    $a = New-Object IO.FileInfo (Join-Path $EngineSource $rel)
+    if ($a.Exists) {
+      $b = New-Object IO.FileInfo (Join-Path $Src $rel)
+      if (-not ($b.Exists -and $b.Length -eq $a.Length -and $b.LastWriteTimeUtc -eq $a.LastWriteTimeUtc)) {
+        [void][IO.Directory]::CreateDirectory($b.DirectoryName)
+        if ($b.Exists -and $b.IsReadOnly) { $b.IsReadOnly = $false }
+        [IO.File]::Copy($a.FullName, $b.FullName, $true)
+        $copied++
+      }
+    }
+    $now = Get-Date
+    if (($now - $last).TotalSeconds -ge 5) {
+      $e = $now - $t0
+      Write-Host ('  {0,3}:{1:00} binaries  {2} of {3} checked, {4} copied' -f [int][Math]::Floor($e.TotalMinutes), $e.Seconds, $i, $rels.Count, $copied) -ForegroundColor DarkGray
+      $last = $now
+    }
+  }
+  Info "$copied input file(s) copied"
+}
+
 Stage 'source' {
-  Info "Copying $EngineSource -> $Src"
-  Robo $EngineSource $Src @('/MIR', '/MT:16', '/R:2', '/W:5', '/XD', (Join-Path $EngineSource '.git'), 'Intermediate', 'Saved', '/XF', '.git')
   $modkit = Join-Path $Src 'Engine\Plugins\Modkit'
+  Info "Copying $EngineSource -> $Src ($($OutputDirNames -join '/') folders: inputs only)"
+  Robo $EngineSource $Src (@('/MIR', '/MT:16', '/R:2', '/W:5', '/XD', (Join-Path $EngineSource '.git'), $modkit, 'Intermediate', 'Saved') + $OutputDirNames + @('/XF', '.git'))
+  Copy-BinariesInputs
   Info "Copying Suzie -> $modkit\Suzie"
   Robo $SuzieRoot (Join-Path $modkit 'Suzie') @('/MIR', '/MT:16', '/XD', (Join-Path $SuzieRoot '.git'), (Join-Path $SuzieRoot 'Packaging'), (Join-Path $SuzieRoot 'Profiles'), (Join-Path $SuzieRoot 'Tools'), 'Binaries', 'Intermediate', '__pycache__', '/XF', '.git*')
   Info "Copying $GamePluginName -> $modkit\$GamePluginName"
@@ -332,6 +371,9 @@ Stage 'build' {
   Info 'BuildGraph: Make Installed Build Win64 (several hours)'
   $env:BUILD_SRC = $Src; $env:OUT_DIR = $Installed; $env:LOG_DIR = $LogDir; $env:UBA_HOST = $UbaHost; $env:MODKIT_ROOT = $Root
   $env:WITH_FULL_DEBUG_INFO = if ($WithDebugInfo) { 'true' } else { 'false' }
+  # UBT runs (free memory / this value) actions in parallel, measured once when it starts; the default 1.5 GB lets a
+  # running editor serialise the build.
+  $env:UnrealBuildTool_ParallelExecutor__MemoryPerActionBytes = '1073741824'
   $log = Join-Path $LogDir 'installed_build.log'
   $rc = Invoke-Watched -Label 'build' -FilePath $env:ComSpec -Arguments "/d /c `"$PSScriptRoot\build-installed.cmd`"" -OutLog (Join-Path $LogDir 'build-installed.out') -WatchLog $log
   if ($rc -ne 0 -or -not (Select-String -Path $log -Pattern 'BUILD SUCCESSFUL' -SimpleMatch -Quiet)) { Fail "the installed build failed (exit $rc), see $log" }
@@ -420,7 +462,7 @@ Stage 'safety' -Always {
 Stage 'archive' {
   if (Test-Path $Archive) { Remove-Item $Archive -Force }
   Info "Compressing $Release -> $Archive (AES-256, encrypted file names)"
-  $rc = Invoke-Watched -Label '7z' -FilePath $SevenZip -Arguments (Join-Args @('a', '-t7z', '-mx=3', '-mmt=on', '-mhe=on', '-bsp1', "-p$Password", $Archive, $Release)) -OutLog (Join-Path $LogDir '7z.log')
+  $rc = Invoke-Watched -Label '7z' -FilePath $SevenZip -Arguments (Join-Args @('a', '-t7z', '-mx=1', '-mmt=on', '-mhe=on', '-bsp1', "-p$Password", $Archive, $Release)) -OutLog (Join-Path $LogDir '7z.log')
   if ($rc) { Fail "7-Zip failed (exit $rc), see $LogDir\7z.log" }
   Info 'Testing the archive'
   $rc = Invoke-Watched -Label '7z test' -FilePath $SevenZip -Arguments (Join-Args @('t', '-bsp1', "-p$Password", $Archive)) -OutLog (Join-Path $LogDir '7z-test.log')
