@@ -102,9 +102,12 @@ DefaultGraphicsRHI=DefaultGraphicsRHI_DX12
 +D3D11TargetedShaderFormats=PCD3D_SM5
 [/Script/Engine.RendererSettings]
 r.AllowStaticLighting=False
+r.SupportStationarySkylight=False
+r.SupportLowQualityLightmaps=False
+r.DBuffer=False
 ```
 
-`r.AllowStaticLighting=False` is **required**: the game cooked no static lighting permutations. The `.uproject` enables both plugins (`Suzie`, `DBDModkitGame`; already in the template). Do not also copy them into the project's `Plugins` folder.
+The four `r.` settings are **required**: the game cooked no permutations for static lighting, stationary skylight, low quality lightmaps or DBuffer. The `.uproject` enables both plugins (`Suzie`, `DBDModkitGame`; already in the template). Do not also copy them into the project's `Plugins` folder.
 
 ## 6. Asset registry and gameplay tags (automatic)
 
@@ -158,7 +161,8 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 | Editor starts as plain UE, no `LogModkit` lines; `LogSuzie: Suzie idle: no profile selected` | No profile selected. `ModkitData\ModkitLocal.ini` is missing (run `Setup Project.bat`), or `Profile=` is not a profile folder: it must be the folder that contains `profile.json` and `engine.ini` (for example `.../Profiles/DBD`), not the file `profile.json`. `-DisableModkit` also causes it. |
 | 0 containers mounted, `failed to fill whole buffer` or index errors | Wrong `GameRoot`, wrong or missing key, or a game version other than the one of your jmap and of this build. Stock tools cannot read the containers; only this engine's cipher from `engine.ini` can. |
 | `LogModkit ... key file` error | `KeyFile=` path is wrong or the file does not hold `0x` + 64 hex digits. The value is never logged. |
-| Materials render as the default/grey material, `Incomplete material` | `r.AllowStaticLighting=False` is missing in `Config/DefaultEngine.ini`, or the editor runs with SM6/Vulkan: start with `-d3d12 -sm5`. A few `missing TShadowDepthPS...` lines are normal (permutations the game did not cook). |
+| Materials render as the default/grey material, `Incomplete material` | `r.AllowStaticLighting=False` is missing in `Config/DefaultEngine.ini`, or the editor runs with SM6/Vulkan: start with `-d3d12 -sm5`. `missing TShadowDepthPS...` on `M_CAMPER`, `M_CAMPER_CUST`, `M_Slasher` or `M_Slasher_Burn` is expected (permutations the game did not cook). |
+| `Incomplete material X, missing (TBasePassPSFNoLightMapPolicySkylight)` or `FDeferredDecalEmissivePS`; lit opaque or decal materials draw as the default material | The renderer settings of the project template are missing in `Config/DefaultEngine.ini`: `r.SupportStationarySkylight=False`, `r.SupportLowQualityLightmaps=False`, `r.DBuffer=False` next to `r.AllowStaticLighting=False`. |
 | `tolerating layout hash mismatch for FMaterialShaderMapContent / FMeshMaterialShaderMap` | Expected; the types are listed under `[ShaderLayout] TolerateMismatch`. |
 | Many `Invalid GameplayTag` warnings | The jmap is missing or has no tag settings object, or the tags were written during this start and the redirects apply from the next start (tags.md). |
 | Crashes after a failed experiment, corrupt shader cache | Use the project DDC `<project>\DDC` (`Start Editor.bat` sets it), delete that folder and restart. Never share one DDC between the stock editor and this one. |
