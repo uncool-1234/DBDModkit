@@ -154,6 +154,28 @@ static void MaterialInstanceTrailingVariants(UObject* Object, FArchive& Ar, int6
 // other parameter types). Parameters are read in the game's order and types (jmap), the results written in the game's types.
 namespace DbdEngineThunks
 {
+/** The stock native functions of the replaced signatures, saved before the generator replaces them (Register). */
+FNativeFuncPtr GStockMultiplyMultiplyFloat = nullptr;
+FNativeFuncPtr GStockPrintString = nullptr;
+FNativeFuncPtr GStockPrintText = nullptr;
+
+/** True when the calling script is from a cooked package: only those use the game's signature. Editor and engine scripts use the stock one. */
+bool IsCookedCaller(const FFrame& Stack)
+{
+	const UObject* Caller = Stack.Node;
+	const UPackage* Pkg = Caller ? Caller->GetOutermost() : nullptr;
+	return Pkg && (Pkg->HasAnyPackageFlags(PKG_Cooked | PKG_FilterEditorOnly) || Pkg->bIsCookedForEditor);
+}
+
+/** Runs the stock function for a non-cooked caller. */
+void CallStock(FNativeFuncPtr Stock, UObject* Context, FFrame& Stack, void* const Result)
+{
+	if (Stock)
+	{
+		Stock(Context, Stack, Result);
+	}
+}
+
 #define DBD_FLOAT_BINARY(Name, Expr)                                              \
 	void Name(UObject* Context, FFrame& Stack, RESULT_DECL)                       \
 	{                                                                             \
@@ -214,6 +236,11 @@ namespace DbdEngineThunks
 	// the editor's stock UKismetMathLibrary::MultiplyMultiply_FloatFloat takes doubles; the game's takes floats
 	void MultiplyMultiply_FloatFloat(UObject* Context, FFrame& Stack, RESULT_DECL)
 	{
+		if (!IsCookedCaller(Stack))
+		{
+			CallStock(GStockMultiplyMultiplyFloat, Context, Stack, RESULT_PARAM);
+			return;
+		}
 		P_GET_PROPERTY(FFloatProperty, Base);
 		P_GET_PROPERTY(FFloatProperty, Exp);
 		P_FINISH;
@@ -230,6 +257,11 @@ namespace DbdEngineThunks
 
 	void PrintString(UObject* Context, FFrame& Stack, RESULT_DECL)
 	{
+		if (!IsCookedCaller(Stack))
+		{
+			CallStock(GStockPrintString, Context, Stack, RESULT_PARAM);
+			return;
+		}
 		P_GET_OBJECT(UObject, WorldContextObject);
 		P_GET_PROPERTY(FStrProperty, InString);
 		P_GET_UBOOL(bPrintToScreen);
@@ -245,6 +277,11 @@ namespace DbdEngineThunks
 
 	void PrintText(UObject* Context, FFrame& Stack, RESULT_DECL)
 	{
+		if (!IsCookedCaller(Stack))
+		{
+			CallStock(GStockPrintText, Context, Stack, RESULT_PARAM);
+			return;
+		}
 		P_GET_OBJECT(UObject, WorldContextObject);
 		P_GET_PROPERTY(FTextProperty, InText);
 		P_GET_UBOOL(bPrintToScreen);
@@ -268,6 +305,16 @@ public:
 		Registry.AddStructOps<FDbdVariantConfigurator>(FName(TEXT("dbd.variant_configurator")));
 		Registry.AddStructOps<FDbdBarkNodeTemplate>(FName(TEXT("dbd.bark_node_template")));
 		Registry.AddPostSerialize(FName(TEXT("dbd.material_instance_trailing_variants")), &MaterialInstanceTrailingVariants);
+
+		// Register runs before the generator binds the thunks, so the stock functions still hold their own native pointers
+		auto StockOf = [](const TCHAR* Path) -> FNativeFuncPtr
+		{
+			UFunction* F = FindObject<UFunction>(nullptr, Path);
+			return F ? F->GetNativeFunc() : nullptr;
+		};
+		DbdEngineThunks::GStockMultiplyMultiplyFloat = StockOf(TEXT("/Script/Engine.KismetMathLibrary:MultiplyMultiply_FloatFloat"));
+		DbdEngineThunks::GStockPrintString = StockOf(TEXT("/Script/Engine.KismetSystemLibrary:PrintString"));
+		DbdEngineThunks::GStockPrintText = StockOf(TEXT("/Script/Engine.KismetSystemLibrary:PrintText"));
 
 		const TCHAR* KML = TEXT("/Script/Engine.KismetMathLibrary:");
 		Registry.AddNativeFunction(FString(KML) + TEXT("Add_FloatFloat"), &DbdEngineThunks::Add_FloatFloat);
