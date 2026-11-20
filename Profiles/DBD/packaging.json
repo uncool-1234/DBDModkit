@@ -8,7 +8,6 @@
   "game_version": "10.2.2",
   "game_plugin": "Plugin/DBDModkitGame",
   "template": "../../Packaging/DBDMount-Template",
-  "setup_guide": "../../Packaging/SETUP-OTHER-PC.md",
   "forbidden_files": [
     "*AES*.txt",
     "*.jmap",
