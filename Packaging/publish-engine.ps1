@@ -490,7 +490,6 @@ Stage 'safety' -Always {
     "$EngOut\Engine\Plugins\Modkit\Suzie\Profiles\$ProfileName\engine.ini",
     "$EngOut\Engine\Plugins\Modkit\Suzie\Profiles\$ProfileName\project.json",
     "$EngOut\Engine\Plugins\Modkit\$GamePluginName\$GamePluginName.uplugin",
-    "$TemplateOut\ModkitProject.ps1", "$TemplateOut\Setup Project.bat",
     "$Release\VERSION.txt")
   $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_) })
   if (-not @(Get-ChildItem $TemplateOut -Filter *.uproject).Count) { $missing += "$TemplateOut\*.uproject" }
@@ -517,19 +516,29 @@ function Fail-Smoke($msg) {
   Fail "$msg (the archive was deleted)"
 }
 
+# Sets one key of ModkitLocal.ini in place (the first matching line), appends it when missing. Other lines are kept.
+function Set-LocalIniValue($Path, $Key, $Value) {
+  $found = $false
+  $out = @(foreach ($l in @(Get-Content -LiteralPath $Path)) {
+    if ($l -match "^\s*$([regex]::Escape($Key))\s*=") { $found = $true; "$Key=$Value" } else { $l }
+  })
+  if (-not $found) { $out += "$Key=$Value" }
+  Set-Content -LiteralPath $Path -Value $out -Encoding UTF8
+}
+
 if ($RunSmoke) {
   Stage 'smoke' {
     $proj = Join-Path $WorkDir ("SmokeTest\" + (Split-Path -Leaf $Template))
     Robo $TemplateOut $proj @('/MIR', '/XD', 'DDC', 'Saved')
     $data = Join-Path $proj 'ModkitData'
     New-Item -ItemType Directory -Force $data | Out-Null
-    Copy-Item (Join-Path $SmokeData 'ModkitLocal.ini') (Join-Path $data 'ModkitLocal.ini') -Force
-    Info 'Project setup (non-interactive, engine from the release folder)'
-    $env:MODKIT_ENGINE = $EngOut
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $proj 'ModkitProject.ps1') -Action setup -NonInteractive
-    $rc = $LASTEXITCODE
-    Remove-Item Env:\MODKIT_ENGINE
-    if ($rc) { Fail-Smoke 'project setup failed' }
+    $smokeIni = Join-Path $data 'ModkitLocal.ini'
+    Copy-Item (Join-Path $SmokeData 'ModkitLocal.ini') $smokeIni -Force
+    Info 'Project paths of the smoke project: EngineDir and Profile point into the release'
+    $profiles = @(Get-ChildItem -LiteralPath (Join-Path $EngOut 'Engine\Plugins\Modkit\Suzie\Profiles') -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'project.json') })
+    if ($profiles.Count -ne 1) { Fail-Smoke "expected exactly one profile folder with project.json in the release, found $($profiles.Count)" }
+    Set-LocalIniValue $smokeIni 'EngineDir' ($EngOut -replace '\\', '/')
+    Set-LocalIniValue $smokeIni 'Profile' ($profiles[0].FullName -replace '\\', '/')
     $uproject = (Get-ChildItem $proj -Filter *.uproject | Select-Object -First 1).FullName
     $out = Join-Path $LogDir 'smoke'
     New-Item -ItemType Directory -Force $out | Out-Null
