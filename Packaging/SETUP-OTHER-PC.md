@@ -5,7 +5,6 @@ The release is one encrypted `.7z` archive (AES-256, encrypted file names; the p
 ```
 <PKG>\UnrealEngine-5.7.4-DBD\   the installed engine (Engine\..., Register Engine.bat)
 <PKG>\DBDMount-Template\        project template: DBDMount.uproject, Config, ModkitProject.ps1, Setup Project.bat, Start Editor.bat, .gitignore
-<PKG>\SETUP-OTHER-PC.md         this file
 <PKG>\VERSION.txt
 ```
 
