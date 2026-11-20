@@ -116,7 +116,7 @@ The four `r.` settings are **required**: the game cooked no permutations for sta
 
 ## 7. Launch
 
-Double-click `DBDMount.uproject` (or the `.uproject` of your project). The engine that opens it is the one named by the `.uproject` `EngineAssociation` (the shipped template uses the id registered by `Register Engine.bat`). The project's `Config` selects D3D12 and SM5, so no switches are needed. When the modkit profile is active the engine sets `UE-LocalDataCachePath` to `<project>\DDC` unless the variable is already set. Extra editor arguments go on an `UnrealEditor.exe` command line:
+Double-click `DBDMount.uproject` (or the `.uproject` of your project). The engine that opens it is the one named by the `.uproject` `EngineAssociation` (the shipped template uses the id registered by `Register Engine.bat`). The project's `Config` selects D3D12 and SM5, so no switches are needed. For every project it opens, the engine sets `UE-LocalDataCachePath` to `<project>\DDC`, unless the variable is already set. Extra editor arguments go on an `UnrealEditor.exe` command line:
 
 ```
 UnrealEditor.exe <project>\DBDMount.uproject -log
@@ -164,7 +164,7 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 | `Incomplete material X, missing (TBasePassPSFNoLightMapPolicySkylight)` or `FDeferredDecalEmissivePS`; lit opaque or decal materials draw as the default material | The renderer settings of the project template are missing in `Config/DefaultEngine.ini`: `r.SupportStationarySkylight=False`, `r.SupportLowQualityLightmaps=False`, `r.DBuffer=False` next to `r.AllowStaticLighting=False`. |
 | `tolerating layout hash mismatch for FMaterialShaderMapContent / FMeshMaterialShaderMap` | Expected; the types are listed under `[ShaderLayout] TolerateMismatch`. |
 | Many `Invalid GameplayTag` warnings | The jmap is missing or has no tag settings object, or the tags were written during this start and the redirects apply from the next start (tags.md). |
-| Crashes after a failed experiment, corrupt shader cache | Use the project DDC `<project>\DDC` (the engine sets it when the modkit profile is active), delete that folder and restart. Never share one DDC between the stock editor and this one. |
+| Crashes after a failed experiment, corrupt shader cache | Use the project DDC `<project>\DDC` (the engine sets it for every project it opens, unless `UE-LocalDataCachePath` is already set), delete that folder and restart. Never share one DDC between the stock editor and this one. |
 | `Plugin 'Suzie' ... duplicate` | The plugins are also copied into `<project>\Plugins` of an installed-engine project; remove them (they are engine plugins there). |
 | `Missing or incompatible game module` | The project has a `Source` folder or `Modules` entry; the template is content only. Remove them or build the module with Visual Studio. |
 | `Project was made with a different version` dialog, double click opens the wrong engine | The engine is not registered or registered under another id; run `Register Engine.bat`. |
