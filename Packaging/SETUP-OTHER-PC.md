@@ -4,7 +4,7 @@ The release is one encrypted `.7z` archive (AES-256, encrypted file names; the p
 
 ```
 <PKG>\UnrealEngine-5.7.4-DBD\   the installed engine (Engine\..., Register Engine.bat)
-<PKG>\DBDMount-Template\        project template: DBDMount.uproject, Config, ModkitProject.ps1, Setup Project.bat, Start Editor.bat, .gitignore
+<PKG>\DBDMount-Template\        project template: DBDMount.uproject, Config, ModkitProject.ps1, Setup Project.bat, .gitignore
 <PKG>\VERSION.txt
 ```
 
@@ -21,7 +21,7 @@ The two plugins that do this, `Suzie` and `DBDModkitGame`, are **engine plugins 
 6. [ ] Copy `<PKG>\DBDMount-Template` to your work folder (for example `D:\DBDModkit\Work\DBDMount`) or use it in place.
 7. [ ] Create a folder `ModkitData` next to `DBDMount.uproject` and put the key file and the jmap in it (section 5).
 8. [ ] Run `Setup Project.bat` in the project folder (section 5).
-9. [ ] Run `Start Editor.bat`, or double-click `DBDMount.uproject`. First start: wait 15 to 30 minutes (SM5 global shader compile). Do not close the editor.
+9. [ ] Double-click `DBDMount.uproject`. First start: wait 15 to 30 minutes (SM5 global shader compile). Do not close the editor.
 10. [ ] Check the expected log lines (section 8).
 
 The asset registry and the gameplay tags need no step (section 6).
@@ -44,7 +44,7 @@ The folder is the engine; there is no installer.
 
 1. Run `vc_redist.x64.exe` once.
 2. Run `Register Engine.bat` in the root of `UnrealEngine-5.7.4-DBD` (next to `Engine\`). It writes `HKCU\Software\Epic Games\Unreal Engine\Builds\DBDModkit-5.7.4 = <engine folder>` for the current user (no admin rights). The template's `.uproject` has `"EngineAssociation": "DBDModkit-5.7.4"`, so after registration double-clicking `DBDMount.uproject` opens it with this engine.
-3. Without registration `Setup Project.bat` and `Start Editor.bat` still work: they find an engine folder next to the project, or take the folder that contains `Engine` from the environment variable `MODKIT_ENGINE`, e.g. `set MODKIT_ENGINE=D:\DBDModkit\UnrealEngine-5.7.4-DBD`.
+3. Without registration `Setup Project.bat` still works: it finds an engine folder next to the project, or takes the folder that contains `Engine` from the environment variable `MODKIT_ENGINE`, e.g. `set MODKIT_ENGINE=D:\DBDModkit\UnrealEngine-5.7.4-DBD`. Double-clicking the `.uproject` needs the engine to be registered (or the `.uproject` `EngineAssociation` to point at it).
 
 ## 3. The game files (you provide them)
 
@@ -82,7 +82,7 @@ Jmap=D:/DBDModkit/Work/DBDMount/ModkitData/DBD-10.2.2.jmap
 | Key | Required | Meaning |
 |---|---|---|
 | `Profile` | yes | the profile **FOLDER** `...\Profiles\DBD` (the folder that contains `profile.json` and `engine.ini`), not the file `profile.json`. `engine.ini` is read by the engine, `profile.json` by Suzie. Selecting a profile switches the modkit on; without it the editor is stock UE 5.7.4 and Suzie logs `Suzie idle: no profile selected`. |
-| `EngineDir` | no | engine root; used by `Start Editor.bat` and the sweep scripts |
+| `EngineDir` | no | engine root; used by the sweep scripts |
 | `GameRoot` | yes | install root of the game; the profile probes `Paks`, `Content/Paks`, `DeadByDaylight/Content/Paks` |
 | `KeyFile` | yes | path of the AES key file (path only, never the key) |
 | `Jmap` | yes | the game's jmap of your game version ([section 11](#11-the-jmap-you-provide-it)); Suzie reads it at every editor start. Without it the editor generates no types and logs `Suzie idle: profile 'dbd' needs the game's jmap, ...` |
@@ -116,13 +116,13 @@ The four `r.` settings are **required**: the game cooked no permutations for sta
 
 ## 7. Launch
 
-Run `Start Editor.bat` in the project folder. It checks that `ModkitData\ModkitLocal.ini` exists and that the paths in it exist (otherwise it tells you to run `Setup Project.bat`), sets the DDC to `<project>\DDC` and runs
+Double-click `DBDMount.uproject` (or the `.uproject` of your project). The engine that opens it is the one named by the `.uproject` `EngineAssociation` (the shipped template uses the id registered by `Register Engine.bat`). The project's `Config` selects D3D12 and SM5, so no switches are needed. When the modkit profile is active the engine sets `UE-LocalDataCachePath` to `<project>\DDC` unless the variable is already set. Extra editor arguments go on an `UnrealEditor.exe` command line:
 
 ```
-UnrealEditor.exe <project>\DBDMount.uproject -log -d3d12 -sm5
+UnrealEditor.exe <project>\DBDMount.uproject -log
 ```
 
-with any arguments you give the `.bat` appended. The engine is `MODKIT_ENGINE`, else `EngineDir`, else the `.uproject` `EngineAssociation`.
+If `ModkitData\ModkitLocal.ini` is missing or its paths are incomplete, the editor shows a `Modkit project setup` dialog that lists the problems and says to run `Setup Project.bat` in the project folder. The same text is logged as a Warning (`LogSuzie`).
 
 No DDC is shipped: the first launch compiles the SM5 global shaders and engine content shaders (**15 to 30 minutes**; the window may stay empty). Later starts take 1 to 2 minutes. Delete `<project>\DDC` to reset the cache.
 Other switches: `-DisableModkit` (stock behaviour), `-DisableSuzie`, `-ModkitProfile=<dir>`, `-ModkitKeyFile=<file>`, `-ModkitGameDir=<dir>`, `-NoPaks`.
@@ -164,10 +164,11 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 | `Incomplete material X, missing (TBasePassPSFNoLightMapPolicySkylight)` or `FDeferredDecalEmissivePS`; lit opaque or decal materials draw as the default material | The renderer settings of the project template are missing in `Config/DefaultEngine.ini`: `r.SupportStationarySkylight=False`, `r.SupportLowQualityLightmaps=False`, `r.DBuffer=False` next to `r.AllowStaticLighting=False`. |
 | `tolerating layout hash mismatch for FMaterialShaderMapContent / FMeshMaterialShaderMap` | Expected; the types are listed under `[ShaderLayout] TolerateMismatch`. |
 | Many `Invalid GameplayTag` warnings | The jmap is missing or has no tag settings object, or the tags were written during this start and the redirects apply from the next start (tags.md). |
-| Crashes after a failed experiment, corrupt shader cache | Use the project DDC `<project>\DDC` (`Start Editor.bat` sets it), delete that folder and restart. Never share one DDC between the stock editor and this one. |
+| Crashes after a failed experiment, corrupt shader cache | Use the project DDC `<project>\DDC` (the engine sets it when the modkit profile is active), delete that folder and restart. Never share one DDC between the stock editor and this one. |
 | `Plugin 'Suzie' ... duplicate` | The plugins are also copied into `<project>\Plugins` of an installed-engine project; remove them (they are engine plugins there). |
 | `Missing or incompatible game module` | The project has a `Source` folder or `Modules` entry; the template is content only. Remove them or build the module with Visual Studio. |
-| `Project was made with a different version` dialog, double click opens the wrong engine | The engine is not registered or registered under another id; run `Register Engine.bat` or use `Start Editor.bat`. |
+| `Project was made with a different version` dialog, double click opens the wrong engine | The engine is not registered or registered under another id; run `Register Engine.bat`. |
+| The `Modkit project setup` dialog opens | `ModkitData\ModkitLocal.ini` is missing, has no `Profile=`, or the profile, the game folder or the jmap is not found. The dialog lists what is missing. Close the editor, run `Setup Project.bat` in the project folder and open the project again. |
 | 15 to 30 minutes of nothing on first start | Normal: SM5 global shader compile with an empty DDC. Watch the `ShaderCompileWorker` processes. |
 | Out of memory during shader compile | Close other programs; 16 GB RAM works. |
 | Crash or `bIsOptional && ElementSize` assertion after a game update | The game version differs from the version of the jmap (or of this build): unversioned data desynchronizes. Use the jmap of the game version you run and restart (native-type-generation.md). |
@@ -175,7 +176,7 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 | DataTable assertion in the unversioned loader for a row struct with a natively serialized struct (`BarkRuleDB`) | The `DBDModkitGame` plugin did not load: check it is enabled in the `.uproject` and `LogSuzie` names the extension module. |
 | `Suzie idle: profile 'dbd' needs the game's jmap, ...` | `Jmap=` under `[Local]` in `<project>/ModkitData/ModkitLocal.ini` is missing or names a file that does not exist; put the jmap in `ModkitData` and run `Setup Project.bat`, or pass `-SuzieJmap=<file>`. |
 | Editor start takes about 9 seconds longer than a stock start | Normal: Suzie parses the jmap (180 MB for 10.2.2) at every start. |
-| `Start Editor.bat` or `Setup Project.bat` does not find the engine, the game or a file | Run `Setup Project.bat` again, or set `MODKIT_ENGINE` to the folder that contains `Engine`. |
+| `Setup Project.bat` does not find the engine, the game or a file | Run `Setup Project.bat` again, or set `MODKIT_ENGINE` to the folder that contains `Engine`. |
 | `Setup Project.bat` stops and lists two files | `ModkitData` holds more than one `*.txt`, `*.jmap` or `*.usmap`; keep one of each. |
 | After moving the engine, the game or the data files | Run `Setup Project.bat` again. |
 
