@@ -63,10 +63,10 @@ The folder is the engine; there is no installer.
 
 The machine specific paths live in one file, `<project>\ModkitData\ModkitLocal.ini`. The editor writes it; you never write it by hand.
 
-1. Put the key file (`*.txt`) and the jmap (`*.jmap`) in the folder `ModkitData` next to `DBDMount.uproject`. The usmap (`*.usmap`) is optional and used only by external tools. Keep one file per extension. Other files and folders in `ModkitData` are ignored.
+1. Put the key file (`*.txt`) and the jmap (`*.jmap`) in the folder `ModkitData` next to `DBDMount.uproject`. Keep one file per extension. Other files and folders in `ModkitData` are ignored.
 2. Double-click `DBDMount.uproject`. When a path is missing or invalid, the editor shows the `Modkit project setup` window before the profile starts. It has one row per path:
-   * the game folder (`Dead by Daylight folder`): the install folder that contains `DeadByDaylight\Content\Paks\global.utoc`;
-   * `KeyFile`, `Jmap` and `Usmap (optional)`: the file. A row is filled in when `ModkitData` holds exactly one file of that extension.
+   * the game folder (`Game folder`): the game's install folder, the one with `DeadByDaylight.exe`. It must contain `DeadByDaylight\Content\Paks\global.utoc`;
+   * `KeyFile` and `Jmap`: the file. A row is filled in when `ModkitData` holds exactly one file of that extension.
    Type a path or use `...` to browse. Each row shows `valid` or `invalid`. `Save and restart` is enabled when every required row is valid; it writes `ModkitLocal.ini` and restarts the editor. `Cancel` closes the window and the editor starts without the game's content. With several profile folders the window asks for one; with one, the editor chooses it.
 3. The window opens again on a start where a path is missing or invalid, for example after the game or a data file moved. When every path is valid it does not open.
 
@@ -87,7 +87,6 @@ Jmap=D:/DBDModkit/Work/DBDMount/ModkitData/DBD-10.2.2.jmap
 | `GameRoot` | yes | install root of the game; the profile probes `Paks`, `Content/Paks`, `DeadByDaylight/Content/Paks` |
 | `KeyFile` | yes | path of the AES key file (path only, never the key) |
 | `Jmap` | yes | the game's jmap of your game version ([section 11](#11-the-jmap-you-provide-it)); Suzie reads it at every editor start. Without it the editor generates no types and logs `Suzie idle: profile 'dbd' needs the game's jmap, ...` |
-| `Usmap` | no | the game's usmap, for external tools only |
 
 Project settings (already in the template `Config\DefaultEngine.ini`; keep them in your own projects):
 
@@ -177,8 +176,8 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 | DataTable assertion in the unversioned loader for a row struct with a natively serialized struct (`BarkRuleDB`) | The `DBDModkitGame` plugin did not load: check it is enabled in the `.uproject` and `LogSuzie` names the extension module. |
 | `Suzie idle: profile 'dbd' needs the game's jmap, ...` | `Jmap=` under `[Local]` in `<project>/ModkitData/ModkitLocal.ini` is missing or names a file that does not exist; put the jmap in `ModkitData` and open the project to fill the `Jmap` row, or pass `-SuzieJmap=<file>`. |
 | Editor start takes about 9 seconds longer than a stock start | Normal: Suzie parses the jmap (180 MB for 10.2.2) at every start. |
-| The `GameRoot` row is invalid | The folder does not contain `DeadByDaylight\Content\Paks\global.utoc`. Choose the install folder of the game (type the path or use `...`). |
-| A row reports two files | `ModkitData` holds more than one `*.txt`, `*.jmap` or `*.usmap`; keep one of each. |
+| The `Game folder` row is invalid | The folder does not contain `DeadByDaylight\Content\Paks\global.utoc`. Choose the install folder of the game (type the path or use `...`). |
+| A row reports two files | `ModkitData` holds more than one `*.txt` or `*.jmap`; keep one of each. |
 | The game, the engine or a data file moved | Open the project: the window opens for the invalid rows; choose the new paths. After moving the engine, run `Register Engine.bat` in the new engine folder. |
 
 ## 10. Another game profile or game version
