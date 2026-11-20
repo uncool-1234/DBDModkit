@@ -268,9 +268,6 @@ if (-not (Done 'build')) {
   if ($ubt.Count) { Fail "UnrealBuildTool/AutomationTool is running (pid $(($ubt | ForEach-Object ProcessId) -join ', ')); one build at a time" }
   $need = 350GB
 } else { $need = 60GB }
-$drive = Get-PSDrive -Name (Split-Path -Qualifier $WorkDir).TrimEnd(':')
-if ($drive.Free -lt $need) { Fail ("{0} has {1:N0} GB free, the remaining stages need about {2:N0} GB" -f $WorkDir, ($drive.Free / 1GB), ($need / 1GB)) }
-
 # The release tag names one engine commit and one Suzie commit: reuse a tag that is on both HEADs, else a free name, created at the end.
 $both = @(GitOut $SuzieRoot tag --points-at HEAD)
 $Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" -and $both -contains $_ }) | Select-Object -First 1
@@ -280,6 +277,24 @@ if ($NewTag) {
   while (@(GitOut $EngineSource tag --list $Tag).Count -or @(GitOut $SuzieRoot tag --list $Tag).Count) { $Tag = "$base-$n"; $n++ }
 }
 Info "Release tag: $Tag$(if ($NewTag) { ' (created when every stage passed)' })"
+
+# Deletions chosen at the start run before the disk check, so they free the space the build needs. The raw installed
+# build is removed only when the build stage is due; it is rebuilt there.
+if ($DeleteOld) {
+  Head 'Removing older archives'
+  $archLeaf = "$Tag.7z"
+  $keep = @($archLeaf, "$archLeaf.sha256", "$archLeaf.password.txt")
+  foreach ($f in @(Get-ChildItem $OutDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '\.7z(\.sha256|\.password\.txt)?$' -and $_.Name -notin $keep })) {
+    Info "Removing $($f.FullName)"; Remove-Item $f.FullName -Force
+  }
+}
+if ($DeleteInstalled -and -not (Done 'build') -and (Test-Path $Installed)) {
+  Head 'Removing the raw installed build'
+  Info "Removing $Installed"; cmd /c rmdir /s /q "`"$Installed`""
+}
+
+$drive = Get-PSDrive -Name (Split-Path -Qualifier $WorkDir).TrimEnd(':')
+if ($drive.Free -lt $need) { Fail ("{0} has {1:N0} GB free, the remaining stages need about {2:N0} GB" -f $WorkDir, ($drive.Free / 1GB), ($need / 1GB)) }
 
 if (-not (Done 'build')) {
   # Unity batches and the PCH hide missing includes; the installed build batches differently and fails late on them.
@@ -536,14 +551,6 @@ if ($NewTag) {
   GitOut $EngineSource tag $Tag | Out-Null
   GitOut $SuzieRoot tag $Tag | Out-Null
   Info "Tagged the engine and Suzie commits $Tag"
-}
-
-if ($DeleteOld) {
-  Head 'Removing older archives'
-  $keep = @((Split-Path -Leaf $Archive), "$(Split-Path -Leaf $Archive).sha256", "$(Split-Path -Leaf $Archive).password.txt")
-  foreach ($f in @(Get-ChildItem $OutDir -File | Where-Object { $_.Name -match '\.7z(\.sha256|\.password\.txt)?$' -and $_.Name -notin $keep })) {
-    Info "Removing $($f.FullName)"; Remove-Item $f.FullName -Force
-  }
 }
 
 if ($DeleteInstalled -or $DeleteSource) {
