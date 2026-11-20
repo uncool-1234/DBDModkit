@@ -433,6 +433,12 @@ $Archive = Join-Path $OutDir "$Tag.7z"
 if (-not (Test-Path $Archive)) { foreach ($s in @('assemble', 'archive', 'smoke')) { Remove-Item (Join-Path $StateDir "$s.done") -Force -ErrorAction SilentlyContinue } }
 
 Stage 'assemble' {
+  # The engine folder is kept for the incremental /MIR below; everything else in the release folder is rebuilt.
+  $keep = @((Split-Path -Leaf $EngOut))
+  foreach ($e in @(Get-ChildItem $Release -Force -ErrorAction SilentlyContinue | Where-Object { $keep -notcontains $_.Name })) {
+    Info "Removing $($e.FullName) from an earlier release"
+    Remove-Item -LiteralPath $e.FullName -Recurse -Force
+  }
   $raw = Join-Path $Installed 'Windows'
   Info "Trimmed engine: $raw -> $EngOut (without *.pdb, *.obj, Documentation, Templates, FeaturePacks)"
   Robo $raw $EngOut @('/MIR', '/XJ', '/COPY:DAT', '/DCOPY:DAT', '/R:2', '/W:5', '/MT:16', '/XF', '*.pdb', '*.obj', '/XD', 'Documentation', 'Templates', 'FeaturePacks')
