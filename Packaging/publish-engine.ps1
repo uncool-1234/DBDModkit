@@ -4,7 +4,7 @@
 # depend on the engine commit and the compiled Suzie and game plugin files, the later stages on the engine and Suzie commits):
 #   source    copy of the engine tree without .git/Intermediate/Saved and with only the build inputs of Binaries/bin/obj folders, plus Suzie and the profile's game plugin under Engine\Plugins\Modkit
 #   build     BuildGraph "Make Installed Build Win64" (build-installed.cmd)
-#   assemble  trimmed engine, profile, tools, Register Engine.bat, project template, setup guide, VERSION.txt under <WorkDir>\Release
+#   assemble  trimmed engine, profile, tools, Register Engine.bat, project template, VERSION.txt under <WorkDir>\Release
 #   safety    removes forbidden files (game data, key files, machine local ini) from the release folder, checks required files
 #   archive   encrypted .7z (AES-256, encrypted file names) with .sha256 and .password.txt next to it
 #   smoke     optional: project setup and one editor start (verify, tag probe, golden dump) from the release folder; runs after the
@@ -161,7 +161,6 @@ if (-not (Test-Path (Join-Path $Prof 'packaging.json'))) { Fail "$Prof\packaging
 $Pkg = Get-Content (Join-Path $Prof 'packaging.json') -Raw | ConvertFrom-Json
 $Proj = Get-Content (Join-Path $Prof 'project.json') -Raw | ConvertFrom-Json
 $Template = (Resolve-Path (Join-Path $Prof $Pkg.template)).Path
-$Guide = (Resolve-Path (Join-Path $Prof $Pkg.setup_guide)).Path
 $GamePlugin = (Resolve-Path (Join-Path $Prof $Pkg.game_plugin)).Path
 $GamePluginName = Split-Path -Leaf $GamePlugin
 
@@ -455,7 +454,6 @@ Stage 'assemble' {
     New-Item -ItemType Directory -Force (Split-Path -Parent $dst) | Out-Null
     Copy-Item -LiteralPath (Join-Path $SuzieRoot $f) $dst
   }
-  Copy-Item $Guide (Join-Path $Release (Split-Path -Leaf $Guide)) -Force
   $suzieLog = (GitOut $SuzieRoot log -1 --format='%h %s') | Select-Object -First 1
   $engineLog = (GitOut $EngineSource log -1 --format='%h %s') | Select-Object -First 1
   @(
@@ -493,7 +491,7 @@ Stage 'safety' -Always {
     "$EngOut\Engine\Plugins\Modkit\Suzie\Profiles\$ProfileName\project.json",
     "$EngOut\Engine\Plugins\Modkit\$GamePluginName\$GamePluginName.uplugin",
     "$TemplateOut\ModkitProject.ps1", "$TemplateOut\Setup Project.bat", "$TemplateOut\Start Editor.bat",
-    "$Release\VERSION.txt", (Join-Path $Release (Split-Path -Leaf $Guide)))
+    "$Release\VERSION.txt")
   $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_) })
   if (-not @(Get-ChildItem $TemplateOut -Filter *.uproject).Count) { $missing += "$TemplateOut\*.uproject" }
   if ($missing.Count) { Fail "missing in the release:`n$($missing -join "`n")" }
