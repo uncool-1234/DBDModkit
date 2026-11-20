@@ -1,10 +1,9 @@
-# Project setup and editor start of a modkit project, called by "Setup Project.bat" (-Action setup) and "Start Editor.bat" (-Action start).
+# Project setup of a modkit project, called by "Setup Project.bat" (-Action setup).
 # setup writes ModkitData\ModkitLocal.ini: the engine, the profile, the game install (always asked) and the user supplied files in ModkitData.
-# start launches the editor with the paths from that file. Editor arguments come from MODKIT_EDITOR_ARGS (the .bat passes %* through it,
-# because PowerShell would try to bind editor switches such as -foo as script parameters).
+# The project is opened by double-clicking its .uproject; the editor reads ModkitLocal.ini at startup.
 # Runs on Windows PowerShell 5.1.
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('setup', 'start')][string]$Action,
+  [Parameter(Mandatory = $true)][ValidateSet('setup')][string]$Action,
   [switch]$NonInteractive
 )
 $ErrorActionPreference = 'Stop'
@@ -194,31 +193,7 @@ function Invoke-Setup {
   Set-Content -LiteralPath $LocalIni -Value $out -Encoding UTF8
   Info ''
   Info "Wrote $LocalIni"
-  Info 'Start the editor with "Start Editor.bat".'
+  Info "Open the project by double-clicking $(Split-Path -Leaf (Get-Uproject))."
 }
 
-function Invoke-Start {
-  $uproject = Get-Uproject
-  if (-not (Test-Path -LiteralPath $LocalIni)) { Fail "$LocalIni does not exist. Run ""Setup Project.bat"" first." }
-  $local = Read-Local
-  $eng = Find-Engine $uproject $local
-  if (-not $eng) { Fail 'engine not found. Run "Setup Project.bat" again.' }
-  $missing = @()
-  foreach ($k in @('Profile', 'GameRoot')) { if (-not $local[$k] -or -not (Test-Path -LiteralPath $local[$k])) { $missing += "$k=$($local[$k])" } }
-  $pj = if ($local['Profile']) { Join-Path $local['Profile'] 'project.json' } else { $null }
-  if ($pj -and (Test-Path -LiteralPath $pj)) {
-    foreach ($df in (Get-Content -LiteralPath $pj -Raw | ConvertFrom-Json).data_files) {
-      $v = $local[$df.key]
-      if (($df.required -and -not $v) -or ($v -and -not (Test-Path -LiteralPath $v -PathType Leaf))) { $missing += "$($df.key)=$v" }
-    }
-  }
-  if ($missing.Count) { Fail "ModkitData\ModkitLocal.ini points to missing paths: $($missing -join '; '). Run ""Setup Project.bat"" again." }
-  ${env:UE-LocalDataCachePath} = Join-Path $ProjectDir 'DDC'
-  $exe = Join-Path $eng.Dir 'Engine\Binaries\Win64\UnrealEditor.exe'
-  $editorArgs = "`"$uproject`" -log -d3d12 -sm5"
-  if ($env:MODKIT_EDITOR_ARGS) { $editorArgs += " $env:MODKIT_EDITOR_ARGS" }
-  Info "Starting $exe"
-  Start-Process -FilePath $exe -ArgumentList $editorArgs -WorkingDirectory $ProjectDir | Out-Null
-}
-
-if ($Action -eq 'setup') { Invoke-Setup } else { Invoke-Start }
+Invoke-Setup

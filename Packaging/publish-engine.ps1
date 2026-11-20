@@ -490,7 +490,7 @@ Stage 'safety' -Always {
     "$EngOut\Engine\Plugins\Modkit\Suzie\Profiles\$ProfileName\engine.ini",
     "$EngOut\Engine\Plugins\Modkit\Suzie\Profiles\$ProfileName\project.json",
     "$EngOut\Engine\Plugins\Modkit\$GamePluginName\$GamePluginName.uplugin",
-    "$TemplateOut\ModkitProject.ps1", "$TemplateOut\Setup Project.bat", "$TemplateOut\Start Editor.bat",
+    "$TemplateOut\ModkitProject.ps1", "$TemplateOut\Setup Project.bat",
     "$Release\VERSION.txt")
   $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_) })
   if (-not @(Get-ChildItem $TemplateOut -Filter *.uproject).Count) { $missing += "$TemplateOut\*.uproject" }
