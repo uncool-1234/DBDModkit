@@ -168,7 +168,7 @@ Expected: Blueprint sweep CLEAN >= 529, DIRTY <= 2, CRASH 0; material sweep PASS
 | `Plugin 'Suzie' ... duplicate` | The plugins are also copied into `<project>\Plugins` of an installed-engine project; remove them (they are engine plugins there). |
 | `Missing or incompatible game module` | The project has a `Source` folder or `Modules` entry; the template is content only. Remove them or build the module with Visual Studio. |
 | `Project was made with a different version` dialog, double click opens the wrong engine | The engine is not registered or registered under another id; run `Register Engine.bat`. |
-| The `Modkit project setup` dialog opens | `ModkitData\ModkitLocal.ini` is missing, has no `Profile=`, or the profile, the game folder or the jmap is not found. The dialog lists what is missing. Close the editor, run `Setup Project.bat` in the project folder and open the project again. |
+| The `Modkit project setup` dialog opens | `ModkitData\ModkitLocal.ini` is missing, has no `Profile=`, or the profile, the AES key file, the game folder or the jmap is not found. The dialog lists what is missing. Close the editor, run `Setup Project.bat` in the project folder and open the project again. |
 | 15 to 30 minutes of nothing on first start | Normal: SM5 global shader compile with an empty DDC. Watch the `ShaderCompileWorker` processes. |
 | Out of memory during shader compile | Close other programs; 16 GB RAM works. |
 | Crash or `bIsOptional && ElementSize` assertion after a game update | The game version differs from the version of the jmap (or of this build): unversioned data desynchronizes. Use the jmap of the game version you run and restart (native-type-generation.md). |
