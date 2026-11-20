@@ -207,6 +207,17 @@ Info "pdbcopy:        $(if ($PdbCopy) { $PdbCopy } else { 'not found: the strip 
 Info "Logs:           $LogDir"
 if (-not $NonInteractive -and (Ask 'Continue? [Y/n]') -match '^[nN]') { Fail 'cancelled' }
 
+# The cleanup answers are carried out only after every stage passed (see the end of the script).
+$DeleteOld = $false; $DeleteInstalled = [bool]$RemoveBuildFiles; $DeleteSource = [bool]$RemoveBuildFiles
+if (-not $NonInteractive) {
+  $oldFiles = @(Get-ChildItem $OutDir -File -ErrorAction SilentlyContinue)
+  $oldGB = [double](($oldFiles | Measure-Object Length -Sum).Sum) / 1GB
+  $DeleteOld = (Ask ("Delete the older archives in $OutDir after this run succeeds ({0} files, {1:N1} GB; the archive this run creates is kept)? [y/N]" -f $oldFiles.Count, $oldGB)) -match '^[yY]'
+  if (-not $RemoveBuildFiles) {
+    $DeleteInstalled = (Ask "Delete the raw installed build $Installed after this run succeeds? The next run rebuilds it. Its PDBs symbolize crash dumps of a -WithDebugInfo release. [y/N]") -match '^[yY]'
+  }
+}
+
 # ---------------------------------------------------------------- preflight
 
 Head 'Preflight'
@@ -527,10 +538,20 @@ if ($NewTag) {
   Info "Tagged the engine and Suzie commits $Tag"
 }
 
-if ($RemoveBuildFiles) {
+if ($DeleteOld) {
+  Head 'Removing older archives'
+  $keep = @((Split-Path -Leaf $Archive), "$(Split-Path -Leaf $Archive).sha256", "$(Split-Path -Leaf $Archive).password.txt")
+  foreach ($f in @(Get-ChildItem $OutDir -File | Where-Object { $_.Name -match '\.7z(\.sha256|\.password\.txt)?$' -and $_.Name -notin $keep })) {
+    Info "Removing $($f.FullName)"; Remove-Item $f.FullName -Force
+  }
+}
+
+if ($DeleteInstalled -or $DeleteSource) {
   Head 'Removing build files'
-  foreach ($d in @($Src, $Installed)) { if (Test-Path $d) { Info "Removing $d"; cmd /c rmdir /s /q "`"$d`"" } }
-  foreach ($s in @('source', 'build')) { Remove-Item (Join-Path $StateDir "$s.done") -Force -ErrorAction SilentlyContinue }
+  $dirs = @(); if ($DeleteInstalled) { $dirs += $Installed }; if ($DeleteSource) { $dirs += $Src }
+  foreach ($d in $dirs) { if (Test-Path $d) { Info "Removing $d"; cmd /c rmdir /s /q "`"$d`"" } }
+  $stale = @('build'); if ($DeleteSource) { $stale += 'source' }
+  foreach ($s in $stale) { Remove-Item (Join-Path $StateDir "$s.done") -Force -ErrorAction SilentlyContinue }
 }
 
 Head 'Summary'
