@@ -23,6 +23,7 @@ param(
   [switch]$SmokeTest,
   [switch]$NoSmokeTest,
   [string]$SmokeData = '',          # a ModkitData folder whose ModkitLocal.ini supplies GameRoot, KeyFile, Jmap; default: the only one in the workspace root
+  [string]$Jmap = '',               # the game's jmap, read for the build change list; default: Jmap= of the same ModkitLocal.ini
   [string]$UbaHost = '',
   [string]$DevProject = '',         # .uproject for the compile check; default: the only project in the workspace root with Plugins\Suzie
   [switch]$WithDebugInfo,           # build with full debug info (BuildGraph WithFullDebugInfo=true, full PDBs in the raw build); default: none (-nodebuginfo)
@@ -190,6 +191,22 @@ if ($RunSmoke -and -not $SmokeData) {
   if ($cands.Count -ne 1) { Fail "pass -SmokeData <ModkitData folder> (folders with ModkitData\ModkitLocal.ini in $Root`: $($cands.Count))" }
   $SmokeData = $cands[0]
 }
+# The build change list is in the jmap's metadata, which starts the file.
+if (-not $Jmap) {
+  $jmapIni = if ($SmokeData) { Join-Path $SmokeData 'ModkitLocal.ini' } else {
+    $c = @(Get-ChildItem $Root -Directory | ForEach-Object { Join-Path $_.FullName 'ModkitData\ModkitLocal.ini' } | Where-Object { Test-Path $_ })
+    if ($c.Count -eq 1) { $c[0] } else { '' } }
+  $jmapLine = if ($jmapIni -and (Test-Path $jmapIni)) { Select-String -Path $jmapIni -Pattern '^Jmap=(.+)$' | Select-Object -First 1 }
+  if (-not $jmapLine) { Fail 'pass -Jmap <jmap> (no Jmap= in a ModkitLocal.ini)' }
+  $Jmap = $jmapLine.Matches[0].Groups[1].Value.Trim()
+}
+if (-not (Test-Path -LiteralPath $Jmap)) { Fail "the jmap $Jmap does not exist" }
+$sr = New-Object IO.StreamReader($Jmap)
+try { $buf = New-Object char[] 65536; $n = $sr.Read($buf, 0, $buf.Length); $jmapHead = [string]::new($buf, 0, $n) } finally { $sr.Dispose() }
+$cl = [regex]::Match($jmapHead, '"build_change_list"\s*:\s*"([^"]+)"')
+if (-not $cl.Success) { Fail "no build_change_list in the metadata of $Jmap" }
+$BuildChangeList = $cl.Groups[1].Value
+
 if (-not $Password -and -not $NonInteractive) { $Password = Ask 'Archive password (Enter for a random 16 character password)' }
 if (-not $Password) { $Password = New-Password }
 if ($Password -match '"') { Fail 'the password must not contain a double quote' }
@@ -447,9 +464,7 @@ Stage 'assemble' {
     "Engine:           $($Pkg.engine_branch) $engineLog",
     "Suzie:            $suzieLog",
     "Profile:          $ProfileName",
-    "Game version:     $($Pkg.game_version)",
-    "Engine folder:    $($Pkg.engine_folder) (registered as $($Proj.engine_id) by 'Register Engine.bat' or 'Setup Project.bat')",
-    "Not included:     debug symbols (*.pdb), *.obj, engine Documentation, Templates and FeaturePacks, the game's files, the AES key, the jmap",
+    "Game version:     $BuildChangeList",
     "Symbols:          $(if ($WithDebugInfo) { 'removed from the release; full PDBs stay in the raw installed build' } else { 'none (built without debug info)' })"
   ) | Set-Content (Join-Path $Release 'VERSION.txt') -Encoding ASCII
 }
