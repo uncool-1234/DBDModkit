@@ -27,7 +27,7 @@ Step 3 needs no tool: the schema recipes change when the game adds or removes me
 
 ## Uniform buffer layouts (step 4)
 
-A cooked shader stores the layout hash of every uniform buffer it binds; the hash covers the member list of the buffer's parameter struct. `oatmealf-5.7` (workspace root, Rust, `README-5.7.md`) reads the registered layouts from a game minidump and from a running stock editor and compares them; its second binary `uniform_layouts` writes the differing layouts as the profile file `uniform_layouts.txt`, which the engine translates to at run time ([cooked-materials-shaders.md](cooked-materials-shaders.md)).
+A cooked shader stores the layout hash of every uniform buffer it binds; the hash covers the member list of the buffer's parameter struct. [oatmealf](https://github.com/uncool-1234/oatmealf) (Rust, folder `oatmealf-5.7` of the layout, `README-5.7.md`) reads the registered layouts from a game minidump and from a running stock editor and compares them; its second binary `uniform_layouts` writes the differing layouts as the profile file `uniform_layouts.txt`, which the engine translates to at run time ([cooked-materials-shaders.md](cooked-materials-shaders.md)).
 
 ```
 oatmealf --capture-only --save-editor-layouts <editor-layouts.json>
@@ -37,7 +37,7 @@ uniform_layouts <game-layouts.json> <editor-layouts.json> <profile dir>\uniform_
 ```
 
 - Build: `cargo build --release` in `oatmealf-5.7` (exes `target\release\oatmealf.exe` and `uniform_layouts.exe`).
-- The editor capture reads the process `UnrealEditor.exe` and must come from a STOCK 5.7.4 editor: the `editor` hashes in the data file are the stock layout hashes. For 10.2.2 the captures are in `oatmealf-5.7\Generated\20261110-002601-495894\exports`.
+- The editor capture reads the process `UnrealEditor.exe` and must come from a STOCK 5.7.4 editor: the `editor` hashes in the data file are the stock layout hashes.
 - The third command is a report: `Generated\<timestamp>\report.md` (per layout: game hash, editor hash, member changes), `manifest.json`, `exports\`, and copies of the stock sources with the changes applied (reference only). oatmealf recomputes each layout hash from the captured members; `N/N changed layouts verified` means the captures are consistent. A layout the report lists as not loaded in the editor exists only in the game (`GPUCulling`) and needs no translation.
 - `uniform_layouts` prints `exported N layouts`. At editor start the log shows `Uniform buffer translations: N of N layouts registered`; any layout the loader refuses logs an error with its name. Only additive changes translate: a game layout that drops or retypes an editor member needs an engine change on `game/dbd`.
 - A layout that differs and has no translation is covered at run time by `AliasUniformBuffers=true` (the cooked hash is registered as an alias of the editor buffer of the same name, log `aliased cooked uniform buffer layout hash`); the alias maps the hash only and does not change the editor's member layout ([cooked-materials-shaders.md](cooked-materials-shaders.md)).

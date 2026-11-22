@@ -1,6 +1,6 @@
 # Profile: DBD
 
-All game specifics of Suzie live in this directory (in the modkit repository; Suzie is a separate repository), plus the engine branch `game/dbd` for the one engine struct change that cannot be data (the `FShaderMapContent` field). `Source/` of the plugin contains no game names (`Tools/check-layers.ps1`). The game's types, schema recipes and gameplay tags are derived from the game's jmap at every editor start; the profile holds no type data. Generated files: `uniform_layouts.txt` (oatmealf) and the local golden dump `data/golden/golden.txt.gz` (`Suzie.DumpAll`), which git does not track.
+All game specifics of Suzie live in this directory (in the DBDModkit repository; Suzie is a separate repository: https://github.com/uncool-1234/Suzie), plus the engine branch `game/dbd` for the one engine struct change that cannot be data (the `FShaderMapContent` field). `Source/` of the plugin contains no game names (`Tools/check-layers.ps1`). The game's types, schema recipes and gameplay tags are derived from the game's jmap at every editor start; the profile holds no type data. Generated files: `uniform_layouts.txt` (oatmealf) and the local golden dump `data/golden/golden.txt.gz` (`Suzie.DumpAll`), which git does not track.
 
 | File | Purpose |
 |---|---|

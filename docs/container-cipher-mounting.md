@@ -16,7 +16,7 @@ The game ships 307 IoStore containers (`.utoc/.ucas`), 307 `.pak` files and `glo
 
 ## Reference for the cipher
 
-The pipeline values are a transcription of CUE4Parse's DBD support, `CUE4Parse\CUE4Parse\GameTypes\DBD\Encryption\Aes\DBDAes.cs` in the clone at the workspace root (upstream `FabianFG/CUE4Parse`). That file is the reference when a game update makes containers fail to mount: pull the clone and compare.
+The pipeline values are a transcription of [CUE4Parse](https://github.com/FabianFG/CUE4Parse)'s DBD support, `CUE4Parse/GameTypes/DBD/Encryption/Aes/DBDAes.cs` in that repository. That file is the reference when a game update makes containers fail to mount: compare its current version with the profile.
 
 | `DBDAes.cs` | `engine.ini` |
 |---|---|
@@ -29,7 +29,7 @@ A pipeline is correct when, for a real container, the decrypted IoStore director
 
 ## Key
 
-The AES-256 key is a text file the user supplies: one line, `0x` plus 64 hex digits (the repository never contains it; `DeadByDaylight-Data\DBD-AES.txt` is the user's own copy and is gitignored). Lookup order: `-ModkitKeyFile=<file>`, env `MODKIT_AES_KEY_FILE`, `[Local] KeyFile=`, `<Project>/ModkitAesKey.txt`. Only the file path appears in configuration and logs; the value is never logged. The pak encryption key delegate is bound only when the modkit is active and a key was read. Without a valid key, container mounting is disabled (`LogModkit: Warning: Modkit: no valid AES key; container mounting disabled.`) and the editor starts without the game content; the pak reader would otherwise assert on the first encrypted container.
+The AES-256 key is a text file the user supplies: one line, `0x` plus 64 hex digits (no repository contains it; keep it outside the repositories or in a folder git ignores). Lookup order: `-ModkitKeyFile=<file>`, env `MODKIT_AES_KEY_FILE`, `[Local] KeyFile=`, `<Project>/ModkitAesKey.txt`. Only the file path appears in configuration and logs; the value is never logged. The pak encryption key delegate is bound only when the modkit is active and a key was read. Without a valid key, container mounting is disabled (`LogModkit: Warning: Modkit: no valid AES key; container mounting disabled.`) and the editor starts without the game content; the pak reader would otherwise assert on the first encrypted container.
 
 ## Mount sequence
 

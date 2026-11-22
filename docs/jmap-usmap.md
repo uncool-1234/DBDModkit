@@ -9,7 +9,7 @@ Agents and scripts of this project never produce these files and never run the g
 
 ## Where the files go
 
-`DeadByDaylight-Data\` holds the user's files (`DBD-<version>.jmap`, the key file `DBD-AES.txt`, the game minidump `DeadByDaylight-Win64-Shipping_<version>.DMP`). The folder is outside every repository. In a project the jmap sits in `<Project>\ModkitData`; the setup window records its path as `Jmap=` in `<Project>\ModkitData\ModkitLocal.ini`, and `-SuzieJmap=<file>` overrides it. Nothing else records its path.
+Keep the files (jmap, key file, game minidump) in a folder no repository tracks, for example `DeadByDaylight-Data` in the layout root, which git ignores. In a project the jmap sits in `<Project>\ModkitData`; the setup window records its path as `Jmap=` in `<Project>\ModkitData\ModkitLocal.ini`, and `-SuzieJmap=<file>` overrides it. Nothing else records its path.
 
 ## Who needs them
 

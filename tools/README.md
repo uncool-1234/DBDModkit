@@ -1,12 +1,17 @@
 # Tools
 
-Scripts shipped with the installed plugin live in `Suzie-fork\Tools`; release scripts live in `Packaging`; this folder holds the workspace level scripts.
+Scripts shipped with the installed plugin live in `Suzie-fork\Tools`; release scripts live in `Packaging`; this folder holds scripts for the folder layout ([README.md](../README.md)).
+
+| File | Use |
+|---|---|
+| `setup-dev-project.ps1` | copies the template `Config` into `DBDMount` when it has none and links `DBDMount\Plugins\Suzie` and `DBDMount\Plugins\DBDModkitGame` (directory junctions) |
+| `check-suzie-layers.ps1` | runs Suzie's `Tools\check-layers.ps1` with this game's names |
 
 ## tools\env
 
 | File | Use |
 |---|---|
-| `env\modkit-env.cmd` | `call "%MODKIT_ROOT%\tools\env\modkit-env.cmd"` sets `MODKIT_ROOT` to the project root (two levels above the file) unless already set. `Packaging\build-installed.cmd` uses it. |
+| `env\modkit-env.cmd` | `call "%MODKIT_ROOT%\tools\env\modkit-env.cmd"` sets `MODKIT_ROOT` to the layout root (two levels above the file) unless already set. `Packaging\build-installed.cmd` uses it. |
 | `env\modkit-env.ps1` | dot-source `. "<root>\tools\env\modkit-env.ps1"`; sets `$env:MODKIT_ROOT` the same way |
 
 ## Tools in the repositories
@@ -20,9 +25,9 @@ Scripts shipped with the installed plugin live in `Suzie-fork\Tools`; release sc
 | `Suzie-fork\Source\Suzie\Private\Setup\SzProjectSetup.cpp` | project setup window (writes `ModkitData\ModkitLocal.ini`) and `Suzie.ProjectSetup` ([docs\profile-format.md](../docs/profile-format.md)) |
 | `Packaging\EngineRoot\Register Engine.bat` | shipped in the release's engine folder; registers it as the template's `EngineAssociation` |
 
-## External tools at the workspace root
+## Tools in other repositories
 
-| Path | Use |
+| Repository (layout folder) | Use |
 |---|---|
-| `oatmealf-5.7\` | Rust tool that compares the game's uniform buffer layouts (from a minidump) with the editor's; its `uniform_layouts` binary writes the profile's `uniform_layouts.txt`; `README-5.7.md` ([docs\game-update.md](../docs/game-update.md)) |
-| `CUE4Parse\`, `retoc\` | external repositories |
+| [oatmealf](https://github.com/uncool-1234/oatmealf) (`oatmealf-5.7`) | Rust tool that compares the game's uniform buffer layouts (from a minidump) with the editor's; its `uniform_layouts` program writes the profile's `uniform_layouts.txt`; `README-5.7.md` ([docs\game-update.md](../docs/game-update.md)) |
+| [CUE4Parse](https://github.com/FabianFG/CUE4Parse), [retoc](https://github.com/trumank/retoc) | reference implementations of the game's container format; not needed to build or run the modkit |

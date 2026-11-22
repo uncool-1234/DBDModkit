@@ -200,4 +200,4 @@ This folder contains a **modified Unreal Engine 5.7.4** built from Epic's source
 `Suzie` is a fork of trumank/Suzie (MIT, see its `LICENSE`).
 **No game content, assets or encryption keys are included.** The profile's test references (`data/golden`, `sweeps/`) list names of the game's types and assets. The jmap and the key file are yours. Dead by Daylight and its assets belong to Behaviour Interactive.
 
-Known limitations of this build: `docs/limitations.md` of the DBD-UEEditor project.
+Known limitations of this build: [limitations.md](limitations.md).

@@ -91,7 +91,7 @@ Startup log line: `engine class functions: added <n> (native <m>, stub <k>), rep
 
 ## Source map
 
-`Suzie-fork/Source/Suzie`:
+`Source/Suzie` of the [Suzie](https://github.com/uncool-1234/Suzie) repository (folder `Suzie-fork`). The "upstream jmap route" is the original generator of [trumank/Suzie](https://github.com/trumank/Suzie), which reads `Content/DynamicClasses/*.jmap`; it runs only with `-SuzieGenerate`.
 
 | File | Holds |
 |---|---|

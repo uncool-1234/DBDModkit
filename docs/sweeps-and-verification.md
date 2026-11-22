@@ -1,6 +1,6 @@
 # Sweeps and verification
 
-All scripts live in `Suzie-fork\Tools\sweep` (installed builds: `<engine>\Engine\Plugins\Modkit\Suzie\Tools\sweep`). They start the editor, so only one runs at a time (GPU, DDC and project lock are shared). They carry no machine paths.
+All scripts live in `Tools\sweep` of the [Suzie](https://github.com/uncool-1234/Suzie) repository (folder `Suzie-fork`; installed builds: `<engine>\Engine\Plugins\Modkit\Suzie\Tools\sweep`). They start the editor, so only one runs at a time (GPU, DDC and project lock are shared). They carry no machine paths.
 
 Common arguments: `-Project <path of the .uproject>` (or env `MODKIT_PROJECT`), `-Extra "<more editor args>"`, `-OutDir <dir>` (default `<ProjectDir>\Saved\SuzieSweeps`). The engine comes from `[Local] EngineDir=` of `<ProjectDir>\ModkitData\ModkitLocal.ini` when it is set, else from the `.uproject` `EngineAssociation` (a path, or an engine id registered under `HKCU\Software\Epic Games\Unreal Engine\Builds`); the key file path from `[Local] KeyFile=` is passed as `-ModkitKeyFile=`. The DDC is `<ProjectDir>\DDC`.
 
@@ -16,7 +16,7 @@ Every script compares the project's `Config` folder with the profile's project t
 | `sweep.ps1 -list <asset\|class list> -tag t` | material/MIC sweep (`sweep.py`) in one editor session: creates a MIC, assigns it to a sphere, renders a 128x128 capture and reads it back (which waits for the GPU); restarts after a crash and records the asset being rendered. The CSV adds error lines per asset, pixels that differ from a capture without the sphere (0 = nothing visible) and the largest channel difference |
 | `dt_run.ps1 -Tag t -Max 300` | loads random DataTable assets from the registry (`dt_test.py`); after a crash the culprit is excluded and the session restarts |
 
-Asset lists: `Profiles/DBD/sweeps/blueprints_531.list`, `materials_200.list`, `plugin_materials_100.list`, `roots_17_failing.txt`. They list the game's asset paths, so git does not track them (`.gitignore`); each machine keeps its own copy, copied from another machine.
+Asset lists: `Profiles/DBD/sweeps/blueprints_531.list`, `materials_200.list`, `plugin_materials_100.list`, `roots_17_failing.txt`. They list the game's asset paths, so git does not track them (`.gitignore`); they are not published; whoever runs the gates keeps a copy.
 
 ## Gate values (DBD 10.2.2)
 
