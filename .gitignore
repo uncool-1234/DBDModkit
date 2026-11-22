@@ -14,3 +14,4 @@
 /Profiles/*/data/golden/
 __pycache__/
 /Profiles/*/sweeps/
+!/LICENSE
