@@ -5,7 +5,7 @@ rem   OUT_DIR    BuiltDirectory (default %MODKIT_ROOT%\..\DBD-UEEditor-Installed
 rem   LOG_DIR    log folder (default %MODKIT_ROOT%\logs)
 rem   UBA_HOST   optional: LAN IP of this PC, enables UBA helpers on port 1345
 rem   WITH_FULL_DEBUG_INFO  false (default) or true: BuildGraph WithFullDebugInfo
-if not defined MODKIT_ROOT call "%~dp0..\..\tools\env\modkit-env.cmd"
+if not defined MODKIT_ROOT call "%~dp0..\tools\env\modkit-env.cmd"
 if not defined BUILD_SRC (echo set BUILD_SRC to the engine source copy & exit /b 1)
 if not defined OUT_DIR for %%I in ("%MODKIT_ROOT%\..\DBD-UEEditor-Installed") do set "OUT_DIR=%%~fI"
 if not defined LOG_DIR set "LOG_DIR=%MODKIT_ROOT%\logs"

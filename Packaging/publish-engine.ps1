@@ -10,12 +10,14 @@
 #   smoke     optional: project setup and one editor start (verify, tag probe, golden dump) from the release folder; runs after the
 #             archive so that nothing the editor writes reaches it; a failure deletes the archive
 # Preflight compiles the Suzie and game plugin modules without unity build and PCH in the dev project before a build.
-# The release tag is created on the engine and Suzie commits once every stage passed.
+# Three repositories go into a release: the engine fork, Suzie, and the modkit repository that holds this script, the profiles
+# and the project template. The release tag is created on all three commits once every stage passed.
 #
 # Game specific values come from <profile>\packaging.json and <profile>\project.json.
 # Runs on Windows PowerShell 5.1.
 param(
-  [string]$ProfileName = '',        # profile folder under Suzie-fork\Profiles; default: the only one
+  [string]$ProfileName = '',        # profile folder under <modkit repository>\Profiles; default: the only one
+  [string]$SuzieRoot = '',          # Suzie plugin repository; default: the only folder in the workspace root with Suzie.uplugin
   [string]$WorkDir = '',            # default: <workspace>-Publish next to the workspace root
   [string]$OutDir = '',             # default: <WorkDir>\Releases
   [string]$EngineSource = '',       # default: the only UnrealEngine-*-fork folder in the workspace root
@@ -33,8 +35,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$SuzieRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$Root = if ($env:MODKIT_ROOT) { $env:MODKIT_ROOT } else { (Resolve-Path (Join-Path $SuzieRoot '..')).Path }
+$ModkitRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$Root = if ($env:MODKIT_ROOT) { $env:MODKIT_ROOT } else { $ModkitRoot }
 $Stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $LogDir = Join-Path $Root "logs\publish-$Stamp"
 New-Item -ItemType Directory -Force $LogDir | Out-Null
@@ -151,12 +153,18 @@ function New-Password {
 
 # ---------------------------------------------------------------- configuration
 
-$profiles = @(Get-ChildItem (Join-Path $SuzieRoot 'Profiles') -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'packaging.json') } | ForEach-Object Name)
+if (-not $SuzieRoot) {
+  $suzies = @(Get-ChildItem $Root -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'Suzie.uplugin') })
+  if ($suzies.Count -ne 1) { Fail "pass -SuzieRoot (folders with Suzie.uplugin in $Root`: $($suzies.Count))" }
+  $SuzieRoot = $suzies[0].FullName
+}
+$SuzieRoot = (Resolve-Path $SuzieRoot).Path
+$profiles = @(Get-ChildItem (Join-Path $ModkitRoot 'Profiles') -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'packaging.json') } | ForEach-Object Name)
 if (-not $ProfileName) {
   if ($profiles.Count -ne 1) { Fail "pass -ProfileName (profiles with packaging.json: $($profiles -join ', '))" }
   $ProfileName = $profiles[0]
 }
-$Prof = Join-Path $SuzieRoot "Profiles\$ProfileName"
+$Prof = Join-Path $ModkitRoot "Profiles\$ProfileName"
 if (-not (Test-Path (Join-Path $Prof 'packaging.json'))) { Fail "$Prof\packaging.json does not exist" }
 $Pkg = Get-Content (Join-Path $Prof 'packaging.json') -Raw | ConvertFrom-Json
 $Proj = Get-Content (Join-Path $Prof 'project.json') -Raw | ConvertFrom-Json
@@ -215,6 +223,7 @@ Head 'Configuration'
 Info "Profile:        $Prof"
 Info "Engine source:  $EngineSource ($($Pkg.engine_branch))"
 Info "Suzie:          $SuzieRoot"
+Info "Modkit:         $ModkitRoot"
 Info "Work folder:    $WorkDir"
 Info "Archive folder: $OutDir"
 Info "Smoke test:     $(if ($RunSmoke) { "yes, game data from $SmokeData" } else { 'no' })"
@@ -242,25 +251,28 @@ if ($branch -ne $Pkg.engine_branch) { Fail "$EngineSource is on '$branch', expec
 foreach ($b in $Pkg.engine_merged_branches) {
   if (-not (Test-Ancestor $EngineSource $b)) { Fail "$b is not merged into $($Pkg.engine_branch)" }
 }
-foreach ($repo in @($EngineSource, $SuzieRoot)) {
+$Repos = @($EngineSource, $SuzieRoot, $ModkitRoot)
+foreach ($repo in $Repos) {
   $dirty = @(GitOut $repo status --porcelain)
   if ($dirty.Count) { Fail "$repo has uncommitted changes:`n$($dirty -join "`n")" }
 }
 $EngineCommit = (GitOut $EngineSource rev-parse HEAD) | Select-Object -First 1
 $SuzieCommit = (GitOut $SuzieRoot rev-parse HEAD) | Select-Object -First 1
-$Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit profile=$ProfileName debuginfo=$([bool]$WithDebugInfo)"
-# The build copy holds Suzie without Packaging, Profiles and Tools plus the game plugin: hash exactly those trees.
-$suzieTree = @(GitOut $SuzieRoot ls-tree HEAD | Where-Object { ($_ -split "`t")[-1] -notin @('Packaging', 'Profiles', 'Tools') }) -join "`n"
+$ModkitCommit = (GitOut $ModkitRoot rev-parse HEAD) | Select-Object -First 1
+$Fingerprint = "engine=$EngineCommit suzie=$SuzieCommit modkit=$ModkitCommit profile=$ProfileName debuginfo=$([bool]$WithDebugInfo)"
+# The build copy holds Suzie without Tools plus the game plugin: hash exactly those trees.
+$suzieTree = @(GitOut $SuzieRoot ls-tree HEAD | Where-Object { ($_ -split "`t")[-1] -ne 'Tools' }) -join "`n"
 $sha = [Security.Cryptography.SHA1]::Create()
 $suzieTreeHash = -join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($suzieTree)) | ForEach-Object { $_.ToString('x2') })
-$gamePluginRel = $GamePlugin.Substring($SuzieRoot.Length).TrimStart('\').Replace('\', '/')
-$gamePluginTree = (GitOut $SuzieRoot rev-parse "HEAD:$gamePluginRel") | Select-Object -First 1
+if (-not $GamePlugin.StartsWith($ModkitRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { Fail "the game plugin $GamePlugin is not inside $ModkitRoot" }
+$gamePluginRel = $GamePlugin.Substring($ModkitRoot.Length).TrimStart('\').Replace('\', '/')
+$gamePluginTree = (GitOut $ModkitRoot rev-parse "HEAD:$gamePluginRel") | Select-Object -First 1
 $BuildFingerprint = "engine=$EngineCommit suzie-build=$suzieTreeHash game-plugin=$gamePluginTree debuginfo=$([bool]$WithDebugInfo)"
 $BuildStages = @('source', 'build')
 $assoc = (Get-Content (Get-ChildItem $Template -Filter *.uproject | Select-Object -First 1).FullName -Raw | ConvertFrom-Json).EngineAssociation
 if ($assoc -ne $Proj.engine_id) { Fail "the template's EngineAssociation '$assoc' differs from project.json engine_id '$($Proj.engine_id)'" }
 if (-not $SevenZip) { Fail '7-Zip (7z.exe) not found' }
-Info "Engine $EngineCommit, Suzie $SuzieCommit, 7-Zip $SevenZip"
+Info "Engine $EngineCommit, Suzie $SuzieCommit, modkit $ModkitCommit, 7-Zip $SevenZip"
 
 New-Item -ItemType Directory -Force $StateDir, $OutDir | Out-Null
 function StageFingerprint($stage) { if ($BuildStages -contains $stage) { $BuildFingerprint } else { $Fingerprint } }
@@ -284,13 +296,14 @@ if (-not (Done 'build')) {
   if ($ubt.Count) { Fail "UnrealBuildTool/AutomationTool is running (pid $(($ubt | ForEach-Object ProcessId) -join ', ')); one build at a time" }
   $need = 350GB
 } else { $need = 60GB }
-# The release tag names one engine commit and one Suzie commit: reuse a tag that is on both HEADs, else a free name, created at the end.
-$both = @(GitOut $SuzieRoot tag --points-at HEAD)
-$Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" -and $both -contains $_ }) | Select-Object -First 1
+# The release tag names one commit in each repository: reuse a tag that is on all three HEADs, else a free name, created at the end.
+$onSuzie = @(GitOut $SuzieRoot tag --points-at HEAD)
+$onModkit = @(GitOut $ModkitRoot tag --points-at HEAD)
+$Tag = @(GitOut $EngineSource tag --points-at HEAD | Where-Object { $_ -like "$($Pkg.release_name)-*" -and $onSuzie -contains $_ -and $onModkit -contains $_ }) | Select-Object -First 1
 $NewTag = -not $Tag
 if ($NewTag) {
   $base = "$($Pkg.release_name)-$(Get-Date -Format yyyyMMdd)"; $Tag = $base; $n = 2
-  while (@(GitOut $EngineSource tag --list $Tag).Count -or @(GitOut $SuzieRoot tag --list $Tag).Count) { $Tag = "$base-$n"; $n++ }
+  while (@($Repos | Where-Object { @(GitOut $_ tag --list $Tag).Count }).Count) { $Tag = "$base-$n"; $n++ }
 }
 Info "Release tag: $Tag$(if ($NewTag) { ' (created when every stage passed)' })"
 
@@ -387,7 +400,7 @@ Stage 'source' {
   Robo $EngineSource $Src (@('/MIR', '/MT:16', '/R:2', '/W:5', '/XD', (Join-Path $EngineSource '.git'), $modkit, 'Intermediate', 'Saved') + $OutputDirNames + @('/XF', '.git'))
   Copy-BinariesInputs
   Info "Copying Suzie -> $modkit\Suzie"
-  Robo $SuzieRoot (Join-Path $modkit 'Suzie') @('/MIR', '/MT:16', '/XD', (Join-Path $SuzieRoot '.git'), (Join-Path $SuzieRoot 'Packaging'), (Join-Path $SuzieRoot 'Profiles'), (Join-Path $SuzieRoot 'Tools'), 'Binaries', 'Intermediate', '__pycache__', '/XF', '.git*')
+  Robo $SuzieRoot (Join-Path $modkit 'Suzie') @('/MIR', '/MT:16', '/XD', (Join-Path $SuzieRoot '.git'), (Join-Path $SuzieRoot 'Profiles'), (Join-Path $SuzieRoot 'Tools'), 'Binaries', 'Intermediate', '__pycache__', '/XF', '.git*')
   Info "Copying $GamePluginName -> $modkit\$GamePluginName"
   Robo $GamePlugin (Join-Path $modkit $GamePluginName) @('/MIR', '/XD', 'Binaries', 'Intermediate', '__pycache__')
   if (-not $PdbCopy) {
@@ -449,24 +462,26 @@ Stage 'assemble' {
   $reg = (Get-Content (Join-Path $PSScriptRoot 'EngineRoot\Register Engine.bat') -Raw).Replace('@ENGINE_ID@', $Proj.engine_id)
   [IO.File]::WriteAllText((Join-Path $EngOut 'Register Engine.bat'), $reg)
   # Only the template's committed files: anything generated in the template folder (ModkitData, tag lists, caches) stays out.
-  if (-not $Template.StartsWith($SuzieRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { Fail "the template $Template is not inside $SuzieRoot" }
-  $tplRel = $Template.Substring($SuzieRoot.Length + 1).Replace('\', '/')
-  $tplFiles = @(GitOut $SuzieRoot ls-files -- $tplRel)
+  if (-not $Template.StartsWith($ModkitRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { Fail "the template $Template is not inside $ModkitRoot" }
+  $tplRel = $Template.Substring($ModkitRoot.Length + 1).Replace('\', '/')
+  $tplFiles = @(GitOut $ModkitRoot ls-files -- $tplRel)
   if (-not $tplFiles.Count) { Fail "no committed files in the template $Template" }
   Info "Template ($($tplFiles.Count) committed files) -> $TemplateOut"
   if (Test-Path $TemplateOut) { Remove-Item $TemplateOut -Recurse -Force }
   foreach ($f in $tplFiles) {
     $dst = Join-Path $TemplateOut $f.Substring($tplRel.Length + 1)
     New-Item -ItemType Directory -Force (Split-Path -Parent $dst) | Out-Null
-    Copy-Item -LiteralPath (Join-Path $SuzieRoot $f) $dst
+    Copy-Item -LiteralPath (Join-Path $ModkitRoot $f) $dst
   }
   $suzieLog = (GitOut $SuzieRoot log -1 --format='%h %s') | Select-Object -First 1
+  $modkitLog = (GitOut $ModkitRoot log -1 --format='%h %s') | Select-Object -First 1
   $engineLog = (GitOut $EngineSource log -1 --format='%h %s') | Select-Object -First 1
   @(
     "$($Pkg.release_name) ($Tag)",
     "Built:            $(Get-Date -Format 'yyyy-MM-dd HH:mm')",
     "Engine:           $($Pkg.engine_branch) $engineLog",
     "Suzie:            $suzieLog",
+    "Modkit:           $modkitLog",
     "Profile:          $ProfileName",
     "Game version:     $BuildChangeList",
     "Symbols:          $(if ($WithDebugInfo) { 'removed from the release; full PDBs stay in the raw installed build' } else { 'none (built without debug info)' })"
@@ -576,9 +591,8 @@ if ($RunSmoke) {
 }
 
 if ($NewTag) {
-  GitOut $EngineSource tag $Tag | Out-Null
-  GitOut $SuzieRoot tag $Tag | Out-Null
-  Info "Tagged the engine and Suzie commits $Tag"
+  foreach ($repo in $Repos) { GitOut $repo tag $Tag | Out-Null }
+  Info "Tagged the engine, Suzie and modkit commits $Tag"
 }
 
 if ($DeleteInstalled -or $DeleteSource) {
