@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "../UnrealEngine-5.7.4-fork",
+	"Category": "",
+	"Description": "DBD cooked-content mount test",
+	"Modules": [
+		{
+			"Name": "DBDMount",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Suzie",
+			"Enabled": true
+		},
+		{
+			"Name": "DBDModkitGame",
+			"Enabled": true
+		}
+	]
+}
