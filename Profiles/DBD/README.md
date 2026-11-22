@@ -1,6 +1,6 @@
 # Profile: DBD
 
-All game specifics of Suzie live in this directory, plus the engine branch `game/dbd` for the one engine struct change that cannot be data (the `FShaderMapContent` field). `Source/` of the plugin contains no game names (`Tools/check-layers.ps1`). Nothing in this directory is generated: the game's types, schema recipes and gameplay tags are derived from the game's jmap at every editor start.
+All game specifics of Suzie live in this directory, plus the engine branch `game/dbd` for the one engine struct change that cannot be data (the `FShaderMapContent` field). `Source/` of the plugin contains no game names (`Tools/check-layers.ps1`). The game's types, schema recipes and gameplay tags are derived from the game's jmap at every editor start; the profile holds no type data. Generated files: `uniform_layouts.txt` (oatmealf) and the local golden dump `data/golden/golden.txt.gz` (`Suzie.DumpAll`), which git does not track.
 
 | File | Purpose |
 |---|---|
@@ -15,7 +15,7 @@ All game specifics of Suzie live in this directory, plus the engine branch `game
 | `load/native_ops.json` | structs whose C++ struct ops come from the extension |
 | `tags/tags.json` | `tags_ini` (project relative path of the written tag list) and `probe_tag` |
 | `sweeps/` | asset lists of the sweep harness (`Tools/sweep`) |
-| `data/golden/golden.txt.gz` | golden reflection dump (`Suzie.DumpAll`, gzip) |
+| `data/golden/golden.txt.gz` | golden reflection dump (`Suzie.DumpAll`, gzip); local file, ignored by git: a gzip of the dump `Tools/sweep/golden.ps1 -Out <file>` writes on a build that passes the other gates |
 | `Plugin/DBDModkitGame` | the only DBD specific CODE (module named by `extension_module`, loaded by Suzie on demand) |
 
 `profile.json` keys: `format`, `id`, `description`, `aliases`, `overrides`, `skip`, `tags`, `native_ops`, `extension_module`, `conflicting_plugins`.
