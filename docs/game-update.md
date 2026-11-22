@@ -47,5 +47,5 @@ uniform_layouts <game-layouts.json> <editor-layouts.json> <profile dir>\uniform_
 Frozen shader map content is checked against the editor's type layouts (name, size, field offsets, SHA1).
 
 - A mismatch on a type listed under `[ShaderLayout] TolerateMismatch` logs `Modkit: tolerating layout hash mismatch for type <T>`. `-ModkitTolerateAllLayoutMismatch` extends this to every type; `-ModkitStrictLayoutHash` disables it.
-- For 10.2.2 the mismatches of `FMaterialShaderMapContent`, `FMeshMaterialShaderMap` and `FGlobalShaderMapContent` derive from their base `FShaderMapContent`, which is 8 bytes larger in the game; `game/dbd` adds a `uint64` after `ShaderPlatformName` (`git show 74e46871f`), which makes the sizes equal.
+- For 10.2.2 the mismatches of `FMaterialShaderMapContent`, `FMeshMaterialShaderMap` and `FGlobalShaderMapContent` derive from their base `FShaderMapContent`, which is 8 bytes larger in the game; `game/dbd` adds a `uint64` after `ShaderPlatformName` (`git show e0f4eb2be`), which makes the sizes equal.
 - The tolerance skips the hash comparison only; it does not adapt sizes or offsets. A size difference is matched by a field on `game/dbd`.
