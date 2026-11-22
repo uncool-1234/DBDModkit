@@ -5,6 +5,6 @@
 - `DBDMount-Template/`: content-only project for the installed engine (no Source, no machine paths): `DBDMount.uproject`, `Config`, `Content`, `.gitignore`. The editor's setup window writes `ModkitData\ModkitLocal.ini` (profile `project.json`).
 - `EngineRoot/Register Engine.bat`: placed in the root of the released engine folder; registers it as the profile's `engine_id`.
 - `publish-engine.ps1` (entry point `publish-engine.cmd`): builds, assembles and archives a release; game specific values come from the profile's `packaging.json` and `project.json`.
-- `SETUP-OTHER-PC.md`: guide for another PC (identical to `N:\DBD-UEEditor\docs\setup-other-machine.md`; not part of the release package).
+- `SETUP-OTHER-PC.md`: guide for another PC (identical to the workspace's `docs\setup-other-machine.md`; not part of the release package).
 
-Procedure: `N:\DBD-UEEditor\docs\installed-build-and-publishing.md`.
+Procedure: the workspace's `docs\installed-build-and-publishing.md`.
