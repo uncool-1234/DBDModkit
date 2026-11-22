@@ -35,5 +35,5 @@ Asset lists: `Profiles/DBD/sweeps/blueprints_531.list`, `materials_200.list`, `p
 
 ## Other checks
 
-- `Suzie-fork\Tools\check-layers.ps1`: no game or studio name in the generic plugin `Source`; exit 1 on a hit.
+- `Suzie-fork\Tools\check-layers.ps1`: no game or studio name in a tracked file of the Suzie repository; exit 1 on a hit.
 - Editor Python scripts run with `-ExecutePythonScript=<file>` (the editor exits after the script) or `-ExecCmds="py <file>"` (the editor stays open).

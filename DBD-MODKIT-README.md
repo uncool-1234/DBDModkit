@@ -11,9 +11,9 @@ You provide: your own game install (version 10.2.2), the AES key in a text file,
 | Engine, generic hooks | `UnrealEngine-5.7.4-fork`, branch `modkit-core` |
 | Engine, DBD struct field | same repo, branch `game/dbd` (the build tree) |
 | Suzie plugin | `Suzie-fork\Source` |
-| DBD profile and game plugin | `Suzie-fork\Profiles\DBD`, `Plugin\DBDModkitGame` |
+| DBD profile and game plugin | `Profiles\DBD`, `Plugin\DBDModkitGame` |
 | Dev project | `DBDMount` |
-| Installed engine for other PCs | the release package built by `Suzie-fork\Packaging\publish-engine.cmd` ([docs/setup-other-machine.md](docs/setup-other-machine.md), [docs/installed-build-and-publishing.md](docs/installed-build-and-publishing.md)) |
+| Installed engine for other PCs | the release package built by `Packaging\publish-engine.cmd` ([docs/setup-other-machine.md](docs/setup-other-machine.md), [docs/installed-build-and-publishing.md](docs/installed-build-and-publishing.md)) |
 
 ## Configure a project (dev tree)
 
@@ -22,14 +22,14 @@ You provide: your own game install (version 10.2.2), the AES key in a text file,
 
 ```ini
 [Local]
-Profile=N:/DBD-UEEditor/Suzie-fork/Profiles/DBD     ; the profile FOLDER (contains profile.json and engine.ini), not profile.json
+Profile=N:/DBD-UEEditor/Profiles/DBD     ; the profile FOLDER (contains profile.json and engine.ini), not profile.json
 GameRoot=<game install root>
 KeyFile=<path of your AES key file>
 Jmap=<path of the game's jmap>
 ```
 
 3. `Jmap=` is required: without it Suzie generates nothing. The gameplay tags come from the jmap automatically ([docs/tags.md](docs/tags.md)). The game's `AssetRegistry.bin` is read from the mounted pak (profile `[AssetRegistry] PakPath`); no extraction.
-4. `DBDMount\Plugins\Suzie` and `DBDMount\Plugins\DBDModkitGame` are junctions into `Suzie-fork`; both plugins are enabled in `DBDMount.uproject`.
+4. `DBDMount\Plugins\Suzie` is a junction to `Suzie-fork`, `DBDMount\Plugins\DBDModkitGame` to `Profiles\DBD\Plugin\DBDModkitGame`; both plugins are enabled in `DBDMount.uproject`.
 5. `Config\DefaultEngine.ini` project settings and the `-d3d12 -sm5` launch: [docs/profile-format.md](docs/profile-format.md).
 
 To place your own asset at a game asset's path (for example a material instance that replaces a game material instance), hide the game asset with the **Asset Loader** toolbar button and restart the editor: [docs/asset-loader.md](docs/asset-loader.md).

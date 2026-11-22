@@ -1,6 +1,6 @@
 # Profile: DBD
 
-All game specifics of Suzie live in this directory, plus the engine branch `game/dbd` for the one engine struct change that cannot be data (the `FShaderMapContent` field). `Source/` of the plugin contains no game names (`Tools/check-layers.ps1`). The game's types, schema recipes and gameplay tags are derived from the game's jmap at every editor start; the profile holds no type data. Generated files: `uniform_layouts.txt` (oatmealf) and the local golden dump `data/golden/golden.txt.gz` (`Suzie.DumpAll`), which git does not track.
+All game specifics of Suzie live in this directory (in the modkit repository; Suzie is a separate repository), plus the engine branch `game/dbd` for the one engine struct change that cannot be data (the `FShaderMapContent` field). `Source/` of the plugin contains no game names (`Tools/check-layers.ps1`). The game's types, schema recipes and gameplay tags are derived from the game's jmap at every editor start; the profile holds no type data. Generated files: `uniform_layouts.txt` (oatmealf) and the local golden dump `data/golden/golden.txt.gz` (`Suzie.DumpAll`), which git does not track.
 
 | File | Purpose |
 |---|---|
@@ -37,7 +37,7 @@ Then double-click the project's `.uproject`.
 
 With a profile selected, a jmap configured and no conflicting plugin enabled, Suzie generates the game's types at startup. Switches: `-DisableSuzie`, `-DisableModkit`, `-SuzieProfile=<name|dir>`, `-SuzieJmap=<file>`, `-SuzieDumpDerived=<dir>`. Commands: `Suzie.GenerateNativeTypes`, `Suzie.VerifyNativeTypes`, `Suzie.DumpClass`, `Suzie.DumpAll <file>`, `Suzie.TagInfo`.
 
-The extension plugin must be discoverable by the project: junction or copy `Plugin/DBDModkitGame` into `<Project>/Plugins/` (or list its parent in `AdditionalPluginDirectories`) and enable it in the `.uproject`; Suzie is installed the same way (`<Project>/Plugins/Suzie` is this repository).
+The extension plugin must be discoverable by the project: junction or copy `Plugin/DBDModkitGame` into `<Project>/Plugins/` (or list its parent in `AdditionalPluginDirectories`) and enable it in the `.uproject`; Suzie is installed the same way (`<Project>/Plugins/Suzie` is the Suzie repository).
 
 ## Gates (`Tools/sweep/run_gates.ps1`)
 

@@ -1,6 +1,6 @@
 # Profile format, switches and configuration
 
-A profile is a directory `Suzie-fork\Profiles\<Game>\`. `ModkitData\ModkitLocal.ini [Local] Profile=` names this directory (the folder, not a file inside it).
+A profile is a directory `Profiles\<Game>\` of the modkit repository (in an installed build: `Engine\Plugins\Modkit\Suzie\Profiles\<Game>\`). `ModkitData\ModkitLocal.ini [Local] Profile=` names this directory (the folder, not a file inside it).
 
 | File | Read by | Purpose |
 |---|---|---|

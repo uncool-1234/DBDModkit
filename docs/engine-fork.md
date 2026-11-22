@@ -7,7 +7,8 @@
 | `N:\DBD-UEEditor\UnrealEngine-5.7.4-fork` | `game/dbd` (checked out) | build tree of the dev engine: `modkit-core` merged with the game commits |
 | `N:\DBD-UEEditor\ue-split` | `modkit-core` | sparse git worktree of the fork for authoring generic engine changes |
 | `C:\Workspace\UnrealEngine-5.7.4-release` | n/a | stock 5.7.4 source, read-only reference |
-| `N:\DBD-UEEditor\Suzie-fork` | `main` | Suzie plugin, profiles, tools, packaging; local only |
+| `N:\DBD-UEEditor\Suzie-fork` | `main` | Suzie plugin and its generic tools |
+| `N:\DBD-UEEditor` | `main` | modkit repository: profiles, packaging, docs, tools |
 
 `modkit-core` contains only generic hooks (no `DBD`, `BHVR` or `DeadByDaylight` text in added lines). `game/dbd` adds the 8 byte `FShaderMapContent` field. The game's uniform buffer layouts are not engine code: the profile file `uniform_layouts.txt` holds them ([cooked-materials-shaders.md](cooked-materials-shaders.md)). The branches `dbd-modkit`, `backup/dbd-modkit` and `wip/split` are archives and scratch.
 
@@ -41,4 +42,4 @@ Engine\Build\BatchFiles\Build.bat ShaderCompileWorker Win64 Development -WaitMut
 - A plugin-only rebuild (Suzie, DBDModkitGame) takes about 15 s.
 - Debug info is off in the dev engine (`Engine\Saved\UnrealBuildTool\BuildConfiguration.xml`).
 - New files under `Engine` keep their owning header as first include (UBT IWYU check).
-- `Suzie-fork\Tools\check-layers.ps1` fails when a game or studio name appears in the generic plugin `Source`.
+- `Suzie-fork\Tools\check-layers.ps1` fails when a game or studio name appears in a tracked file of the Suzie repository.
