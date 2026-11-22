@@ -14,7 +14,7 @@ All game specifics of Suzie live in this directory (in the modkit repository; Su
 | `load/skip.json` | `skip_export_classes` (exports skipped on load) and `post_serialize` (handler names provided by the extension) |
 | `load/native_ops.json` | structs whose C++ struct ops come from the extension |
 | `tags/tags.json` | `tags_ini` (project relative path of the written tag list) and `probe_tag` |
-| `sweeps/` | asset lists of the sweep harness (`Tools/sweep`) |
+| `sweeps/` | asset lists of the sweep harness (`Tools/sweep`); local files, ignored by git |
 | `data/golden/golden.txt.gz` | golden reflection dump (`Suzie.DumpAll`, gzip); local file, ignored by git: a gzip of the dump `Tools/sweep/golden.ps1 -Out <file>` writes on a build that passes the other gates |
 | `Plugin/DBDModkitGame` | the only DBD specific CODE (module named by `extension_module`, loaded by Suzie on demand) |
 

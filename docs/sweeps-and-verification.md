@@ -16,7 +16,7 @@ Every script compares the project's `Config` folder with the profile's project t
 | `sweep.ps1 -list <asset\|class list> -tag t` | material/MIC sweep (`sweep.py`) in one editor session: creates a MIC, assigns it to a sphere, renders a 128x128 capture and reads it back (which waits for the GPU); restarts after a crash and records the asset being rendered. The CSV adds error lines per asset, pixels that differ from a capture without the sphere (0 = nothing visible) and the largest channel difference |
 | `dt_run.ps1 -Tag t -Max 300` | loads random DataTable assets from the registry (`dt_test.py`); after a crash the culprit is excluded and the session restarts |
 
-Asset lists: `Profiles/DBD/sweeps/blueprints_531.list`, `materials_200.list`, `plugin_materials_100.list`, `roots_17_failing.txt`.
+Asset lists: `Profiles/DBD/sweeps/blueprints_531.list`, `materials_200.list`, `plugin_materials_100.list`, `roots_17_failing.txt`. They list the game's asset paths, so git does not track them (`.gitignore`); each machine keeps its own copy, copied from another machine.
 
 ## Gate values (DBD 10.2.2)
 

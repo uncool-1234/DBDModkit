@@ -14,7 +14,7 @@ A profile is a directory `Profiles\<Game>\` of the modkit repository (in an inst
 | `load/skip.json` | Suzie | `skip_export_classes` (exports skipped on load, `include_derived`) and `post_serialize` (handler name per class, provided by the extension) |
 | `load/native_ops.json` | Suzie | structs whose C++ struct ops come from the extension |
 | `tags/tags.json` | Suzie, `Suzie.TagInfo` | `tags_ini` (project relative path of the written tag list), `probe_tag` ([tags.md](tags.md)) |
-| `sweeps/` | sweep harness | asset lists ([sweeps-and-verification.md](sweeps-and-verification.md)) |
+| `sweeps/` | sweep harness | asset lists; local, not tracked by git ([sweeps-and-verification.md](sweeps-and-verification.md)) |
 | `data/golden/golden.txt.gz` | `golden_diff.py` | golden dump, output of `Suzie.DumpAll`; local file, not tracked by git ([sweeps-and-verification.md](sweeps-and-verification.md)) |
 | `README.md` | n/a | profile overview |
 | `Plugin/<GameModule>` | UE | extension plugin; the module named by `extension_module` |

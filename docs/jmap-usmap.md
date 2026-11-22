@@ -13,6 +13,6 @@ Agents and scripts of this project never produce these files and never run the g
 
 ## Who needs them
 
-- Every user needs the jmap of the game version they run: the editor generates no types without it (`Suzie idle: profile '<id>' needs the game's jmap, ...`). The profile holds no type data; the only data in it that derives from the game are the test references (`data/golden`: names and layouts of the game's types; `sweeps/`: asset paths).
+- Every user needs the jmap of the game version they run: the editor generates no types without it (`Suzie idle: profile '<id>' needs the game's jmap, ...`). The profile holds no type data. Data in it that derives from the game: `uniform_layouts.txt` (layouts read from a game minidump) and the cipher steps in `engine.ini`; the test references (`data/golden`: names and layouts of the game's types; `sweeps/`: asset paths) are local files that git does not track.
 - The minidump is a developer input for new uniform buffer layouts ([game-update.md](game-update.md)); ordinary users do not need it.
 - A new game needs its own jmap, a new profile folder created from the DBD profile, its own `uniform_layouts.txt` when uniform buffer layouts differ ([game-update.md](game-update.md)), and its own engine branch when engine struct sizes differ ([engine-fork.md](engine-fork.md)).
