@@ -45,7 +45,7 @@ Each hook has a stock default; without a registration the stock behaviour runs.
 | Uniform buffer translation | `RHI/Public/RHIUniformBufferTranslation.h`, `RenderCore/Private/UniformBufferTranslationLoader.cpp`, `D3D12UniformBuffer.cpp`, `D3D12Commands.cpp` | registry of game layouts keyed by editor layout hash, loaded from the profile; D3D12 keeps a game-layout twin of each translated uniform buffer and binds it to shaders that expect the game hash |
 | Struct type hash fallback | `Class.cpp` | `GetStructTypeHash` hashes members with `CPF_HasGetValueTypeHash` when a struct has no `CppStructOps` |
 | Loader resilience | `AsyncLoading2.cpp`, `LinkerLoad.cpp`, `UnversionedPropertySerialization.cpp`, `ShaderMap.cpp`, D3D12 RHI | tolerances listed above; null safe shader maps for unknown shader types |
-| Cooked editing | `MaterialShared.cpp`, `Material.cpp`, `MaterialInstance.cpp`, `MaterialEditorUtilities.cpp`, asset editor gates | editing of cooked assets, cooked parameter panel, static permutation rules |
+| Cooked assets in editors | `MaterialShared.cpp`, `Material.cpp`, `MaterialInstance.cpp`, `MaterialEditorUtilities.cpp`, asset editor gates | cooked assets open in the asset editors, cooked parameter panel, static permutation rules |
 
 ## Hook levels
 

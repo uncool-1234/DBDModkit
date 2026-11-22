@@ -12,7 +12,7 @@ Cooked materials load with the game's own compiled shaders; no DDC lookup and no
 
 ## Guard predicate
 
-`IsCookedWithoutEditorSource()` (`Materials/CookedMaterialGuard.h`), gated by CVar `r.CookedShaders.GuardCookedMaterials` (-1 automatic: on when a shader library is configured), applies the cooked-material behaviour in `Material.cpp`, `MaterialShared.cpp` (no `CacheShaders` compile) and `MaterialInstance.cpp` (static permutation rules). Cooked assets are editable because the asset editor and content browser gates are lifted while `Modkit::IsActive()`.
+`IsCookedWithoutEditorSource()` (`Materials/CookedMaterialGuard.h`), gated by CVar `r.CookedShaders.GuardCookedMaterials` (-1 automatic: on when a shader library is configured), applies the cooked-material behaviour in `Material.cpp`, `MaterialShared.cpp` (no `CacheShaders` compile) and `MaterialInstance.cpp` (static permutation rules). Cooked assets open in the asset editors because the asset editor and content browser gates are lifted while `Modkit::IsActive()`; changes are saved as project assets, never into the game's packages.
 
 ## Layout hashes
 
