@@ -74,7 +74,6 @@ To place your own asset at a game asset's path (for example a material instance 
 - A new game version: [docs/game-update.md](docs/game-update.md)
 - Testing: [docs/sweeps-and-verification.md](docs/sweeps-and-verification.md)
 - Problems: [docs/troubleshooting.md](docs/troubleshooting.md); limits: [docs/limitations.md](docs/limitations.md)
-- Orientation for AI coding agents working in this layout: [AGENTS.md](AGENTS.md)
 
 ## License
 
