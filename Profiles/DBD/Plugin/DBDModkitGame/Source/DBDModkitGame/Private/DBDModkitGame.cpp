@@ -5,7 +5,7 @@
 //  3. dbd.bark_node_template: BhvrBarkNodeTemplate (16 bytes in memory, no reflected members) is a hand serialized inline object:
 //     int32 bHasNode; if set: class package index, then that class instance's own unversioned property data inline, with NO serial size.
 //     Because there is no size it cannot be skipped, it has to be decoded: a transient instance is created and read with
-//     UObject::SerializeScriptProperties (format: CUE4Parse FBhvrBarkNodeTemplate.cs, verified on BarkRuleDB bytes).
+//     UObject::SerializeScriptProperties (format: FBhvrBarkNodeTemplate.cs of CUE4Parse (https://github.com/FabianFG/CUE4Parse), verified on BarkRuleDB bytes).
 //  4. Native thunks of KismetMathLibrary and KismetSystemLibrary functions whose game signatures the stock classes lack or differ from.
 // 1-3 are bound to types/classes by data: load/native_ops.json and load/skip.json of the profile; 4 by the function path (Register).
 #include "SuzieExtension.h"
