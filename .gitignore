@@ -1,0 +1,15 @@
+# Allow-list: this repository is the workspace root; every other folder in it (engine fork, Suzie, external tools,
+# the user's game data and key file, dev project, logs) is ignored.
+/*
+!/.gitignore
+!/AGENTS.md
+!/DBD-MODKIT-README.md
+!/docs/
+!/tools/
+!/Profiles/
+!/Packaging/
+
+/Profiles/*/Plugin/*/Binaries/
+/Profiles/*/Plugin/*/Intermediate/
+/Profiles/*/data/golden/
+__pycache__/
