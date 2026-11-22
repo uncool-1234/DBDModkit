@@ -42,4 +42,4 @@ Engine\Build\BatchFiles\Build.bat ShaderCompileWorker Win64 Development -WaitMut
 - A plugin-only rebuild (Suzie, DBDModkitGame) takes about 15 s.
 - Debug info is off in the dev engine (`Engine\Saved\UnrealBuildTool\BuildConfiguration.xml`).
 - New files under `Engine` keep their owning header as first include (UBT IWYU check).
-- `Suzie-fork\Tools\check-layers.ps1` fails when a game or studio name appears in a tracked file of the Suzie repository.
+- `tools\check-suzie-layers.ps1` fails when a game or studio name appears in a tracked file of the Suzie repository.
