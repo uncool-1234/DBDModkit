@@ -38,6 +38,7 @@ layout <Name> editor=<hash> game=<hash> size=<bytes> flags=<n> binding=<n> stati
 leaf <GameOffset> <Type> <Size> <Default|-> <Path>
 list <R|G|T|B|U|N> <Path> [<Path> ...]
 end
+add <StructTypeName> <AfterMember|-> <Name> <UBMT_type> <Rows> <Columns> <Elements> <HlslType>
 ```
 
 - `layout` starts a record. `editor` is the RHI hash of the editor layout (`FRHIUniformBufferLayout::GetHash`), `game` the RHI hash the game's shaders expect, `size` the game `ConstantBufferSize`. `flags`, `binding` (`EUniformBufferBindingFlags`), `static` (`FUniformBufferStaticSlot`, 255 when none) and `rtoffset` (`RenderTargetsOffset`, 65535 when none) are the game values.
@@ -52,6 +53,18 @@ The loader registers an entry only when all of these hold; otherwise it logs an 
 3. Every editor member has a leaf with the same path, type and size (only additive changes translate).
 4. The game layout built from the record recomputes to `game` (`FRHIUniformBufferLayoutInitializer::ComputeHash`), and `game` differs from `editor`.
 5. Each leaf without an editor counterpart is a resource with a registered default key; constants without a counterpart are zero.
+
+`add` records stand outside `layout` records. Each names a member that the game's version of a parameter struct type (`StructTypeName`, the C++ type name, for example `FViewUniformShaderParameters` or a nested struct type) has and the editor's lacks: it follows the member `AfterMember` (`-` for the start of the struct), with base type `UBMT_type` (`UBMT_FLOAT32`, `UBMT_INT32`, `UBMT_UINT32` or a resource type), `Rows`, `Columns`, `Elements` (0 when not an array) and the HLSL type written in shader code. Records of one struct type apply in file order. The runtime translation ignores them; they are used for cooking (below). DBD 10.2.2 has 30 records on 7 struct types.
+
+## Cooked layouts
+
+Project materials cook with shaders compiled against the game's uniform buffer layouts, so the shaders read the game's offsets and resource indices and their `ResourceTableLayoutHashes` hold the game hashes.
+
+- `CookedUniformBufferLayouts.h/.cpp` (RenderCore, editor builds): for every `layout` record whose editor struct, or a struct nested in it, has `add` records, the loader builds a copy of the editor `FShaderParametersMetadata` with the added members inserted, nested structs replaced by their copies, and offsets assigned by the stock packing rules (constants 4/8/16 aligned by column count; matrices and arrays 16 aligned, 16 bytes per row and element; nested structs 16 aligned, size rounded to 16; resources 8 bytes). A copy is registered only when its RHI layout hash equals `game` and each of its members matches the record's leaf of the same path in offset, size and type, with the same member count. The copies are not in the global struct list or the layout hash map.
+- Log line: `Cooked uniform buffer layouts: N of M built from '<path>'`; DBD 10.2.2 builds 24 of 24. A copy that fails logs `Cooked uniform buffer layout '<name>' not built: <reason>`, and that buffer cooks with the editor layout.
+- `FMaterialShaderMapId::CookedLayoutsKey`: a CRC of the registered game hashes, set by `FMaterial::BuildShaderMapIdOverride` when a target platform is given (cooking) and 0 for editor rendering. It is part of id equality and, when non-zero, of the DDC key; it is not serialized. Cooked and editor shader maps of one material are therefore separate maps in memory and in the DDC.
+- `PrepareMaterialShaderCompileJob` and `PrepareMeshMaterialShaderCompileJob` call `ApplyCookedLayouts` for a keyed id after `GlobalBeginCompileShader`: each uniform buffer of the job's environment that has a copy gets the copy's `UniformBufferMap` entry, resource table entries and generated HLSL declaration. Log line, at 1, 2, 4, ... jobs: `Cooked uniform buffer layouts applied: <jobs> jobs, <n> buffer substitutions`.
+- An environment with a shader binding layout is not substituted (one logged error).
 
 ## BHVR-only shader types
 
