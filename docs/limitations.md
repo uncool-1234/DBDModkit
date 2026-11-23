@@ -22,6 +22,13 @@ Present state of gaps; nothing here is a plan.
 - Static functions of Blueprint function libraries that have no native implementation are not generated. A call to one aborts the script with a logged Blueprint exception ([troubleshooting.md](troubleshooting.md)).
 - Five game functions have a different signature than the editor's and no native implementation: `MeshComponent::SetOverlayMaterial`, `PlayerController::ClientWasKicked`, `PlayerInput::SetBind`, and the delegate signatures `PlayMontageCallbackProxy::OnMontageEnded` and `OnMontageBlendingOut`. They keep the editor's signature.
 
+## Blueprints
+
+- 16-bit integers (and enums with a 16-bit underlying type) can only be read. A read copies 2 bytes into an int pin: int16 values are not sign-extended (-1 reads as 65535), and a read straight into an int variable keeps that variable's upper 2 bytes, so the variable must be 0 beforehand. There is no Set node, Make or Set Members pin for them, and function inputs and containers of 16-bit integers have no pin.
+- Enums with a 2, 4 or 8 byte underlying type are plain integer pins without an enum dropdown. Unsigned 32 and 64 bit values show as signed.
+- The Set Property By Name nodes do not handle unsigned integers or enums wider than a byte; on such a property they do nothing.
+- Assets that use members exposed by the Blueprint exposure settings report compile errors in an editor where the settings are off.
+
 ## Schema
 
 - Values of the roughly 160 game members that stock engine classes lack are read and discarded; the editor cannot show them.

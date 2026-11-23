@@ -45,6 +45,7 @@ Each hook has a stock default; without a registration the stock behaviour runs.
 | Uniform buffer translation | `RHI/Public/RHIUniformBufferTranslation.h`, `RenderCore/Private/UniformBufferTranslationLoader.cpp`, `D3D12UniformBuffer.cpp`, `D3D12Commands.cpp` | registry of game layouts keyed by editor layout hash, loaded from the profile; D3D12 keeps a game-layout twin of each translated uniform buffer and binds it to shaders that expect the game hash |
 | Struct type hash fallback | `Class.cpp` | `GetStructTypeHash` hashes members with `CPF_HasGetValueTypeHash` when a struct has no `CppStructOps` |
 | Loader resilience | `AsyncLoading2.cpp`, `LinkerLoad.cpp`, `UnversionedPropertySerialization.cpp`, `ShaderMap.cpp`, D3D12 RHI | tolerances listed above; null safe shader maps for unknown shader types |
+| Blueprint editor | `BlueprintEditorSettings.h`, BlueprintGraph, UnrealEd `Kismet2`, KismetCompiler, AnimGraph (editor modules only) | settings that expose every property, function, struct and class to Blueprints; integer pins sized like the property for 1, 2 (read only), 4 and 8 byte integers and enums; independent of the profile ([MODKIT.md](https://github.com/uncool-1234/UnrealEngine-dbd/blob/modkit-core/MODKIT.md)) |
 | Cooked assets in editors | `MaterialShared.cpp`, `Material.cpp`, `MaterialInstance.cpp`, `MaterialEditorUtilities.cpp`, asset editor gates | cooked assets open in the asset editors, cooked parameter panel, static permutation rules |
 
 ## Hook levels

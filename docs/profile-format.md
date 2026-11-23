@@ -163,3 +163,5 @@ r.DBuffer=False
 ```
 
 The four `r.` settings are required: the game cooked no permutations for static lighting, stationary skylight, low quality lightmaps or DBuffer. Without them, materials count as incomplete ([cooked-materials-shaders.md](cooked-materials-shaders.md)). The project template `Config\DefaultEngine.ini` holds them. The editor runs with `-d3d12 -sm5` (or `-d3d11`); the cooked shaders exist only as `PCD3D_SM5`. The `.uproject` enables the plugins `Suzie` and `DBDModkitGame`.
+
+The template's `Config\DefaultEditorPerProjectUserSettings.ini` turns on the four Blueprint exposure settings (`bExposeAllProperties`, `bExposeAllFunctions`, `bExposeAllStructs`, `bExposeAllClasses` in `[/Script/BlueprintGraph.BlueprintEditorSettings]`); each user can change them in Editor Preferences > Blueprint Editor > Exposure.
