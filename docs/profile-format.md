@@ -162,6 +162,15 @@ r.SupportLowQualityLightmaps=False
 r.DBuffer=False
 ```
 
-The four `r.` settings are required: the game cooked no permutations for static lighting, stationary skylight, low quality lightmaps or DBuffer. Without them, materials count as incomplete ([cooked-materials-shaders.md](cooked-materials-shaders.md)). The project template `Config\DefaultEngine.ini` holds them. The editor runs with `-d3d12 -sm5` (or `-d3d11`); the cooked shaders exist only as `PCD3D_SM5`. The `.uproject` enables the plugins `Suzie` and `DBDModkitGame`.
+The four `r.` settings are required: the game cooked no permutations for static lighting, stationary skylight, low quality lightmaps or DBuffer. Without them, materials count as incomplete ([cooked-materials-shaders.md](cooked-materials-shaders.md)). The project template `Config\DefaultEngine.ini` holds them.
+
+`Config/DefaultGame.ini` must contain:
+
+```ini
+[/Script/UnrealEd.ProjectPackagingSettings]
+bShareMaterialShaderCode=False
+```
+
+The packaging settings are read from the Game ini; the engine default (`BaseGame.ini`) is `True`. With `False` a cook writes no project shader library and every cooked material carries its shader code inline ([cooking.md](cooking.md)). `tools\setup-dev-project.ps1` copies the template `Config` only into a project without one, so an existing project needs the file copied by hand. The editor runs with `-d3d12 -sm5` (or `-d3d11`); the cooked shaders exist only as `PCD3D_SM5`. The `.uproject` enables the plugins `Suzie` and `DBDModkitGame`.
 
 The template's `Config\DefaultEditorPerProjectUserSettings.ini` turns on the four Blueprint exposure settings (`bExposeAllProperties`, `bExposeAllFunctions`, `bExposeAllStructs`, `bExposeAllClasses` in `[/Script/BlueprintGraph.BlueprintEditorSettings]`); each user can change them in Editor Preferences > Blueprint Editor > Exposure.

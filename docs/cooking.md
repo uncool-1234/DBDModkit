@@ -22,6 +22,8 @@ A project's own assets cook with the stock cook commandlet. Game content is neve
 - The key file path and the DDC are the ones the editor uses (`ModkitLocal.ini` `KeyFile`; environment `UE-LocalDataCachePath=<Project>\DDC`, which the engine sets for every project it opens, unless the variable is already set).
 - Output: `<Project>\Saved\Cooked\Windows\<Project>\Content\...` for `/Game`, `<Project>\Saved\Cooked\Windows\<Project>\Plugins\<category>\...\<Plugin>\Content\...` for assets saved under a game plugin root (`.uasset` + `.uexp`, loose, not IoStore). `AssetRegistry.bin` there lists the cooked project packages only; `Metadata\DevelopmentAssetRegistry.bin` also lists the base game packages.
 
+Shader code: with `bShareMaterialShaderCode=False` in the project's `Config/DefaultGame.ini` ([profile-format.md](profile-format.md#project-requirements)) the cook writes no `ShaderArchive-*.ushaderbytecode`; each cooked material's shader map holds its code inline. A cooked shader map shares its code only while the cooker has a shader library open for writing (`FShaderLibraryCooker::IsCookingLibraryOpen`, `ShaderMap.cpp`); the game libraries the editor opens for reading do not count. The shaders are compiled against the editor's uniform buffer layouts ([limitations.md](limitations.md)).
+
 Log line: `Modkit: <n> packages from mounted containers recorded as base game (<s> skipped: no mount point), <ms> ms.` (DBD 10.2.2: 185028 packages, 0 skipped, about 3 s.)
 
 ## Base game packages
