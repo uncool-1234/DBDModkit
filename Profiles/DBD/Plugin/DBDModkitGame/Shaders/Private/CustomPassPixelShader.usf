@@ -1,0 +1,14 @@
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Generated/Material.ush"
+#include "/Engine/Generated/VertexFactory.ush"
+
+// The unused inputs are required: in a pipeline, the compiler reports the inputs a pixel shader reads to the vertex shader,
+// which then drops its other outputs, only when the pixel shader declares an input it does not read.
+void Main(
+	in float4 SvPosition : SV_POSITION,
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	float4 PixelPosition : TEXCOORD6,
+	out float4 OutColor : SV_Target0)
+{
+	OutColor = 0;
+}
