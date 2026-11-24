@@ -157,12 +157,13 @@ DefaultGraphicsRHI=DefaultGraphicsRHI_DX12
 +D3D11TargetedShaderFormats=PCD3D_SM5
 [/Script/Engine.RendererSettings]
 r.AllowStaticLighting=False
+r.Shaders.RemoveUnusedInterpolators=1
 r.SupportStationarySkylight=False
 r.SupportLowQualityLightmaps=False
 r.DBuffer=False
 ```
 
-The four `r.` settings are required: the game cooked no permutations for static lighting, stationary skylight, low quality lightmaps or DBuffer. Without them, materials count as incomplete ([cooked-materials-shaders.md](cooked-materials-shaders.md)). The project template `Config\DefaultEngine.ini` holds them.
+The four `r.` settings are required: the game cooked no permutations for static lighting, stationary skylight, low quality lightmaps or DBuffer. Without them, materials count as incomplete ([cooked-materials-shaders.md](cooked-materials-shaders.md)). `r.Shaders.RemoveUnusedInterpolators=1` matches how the game's shaders are compiled: pipeline shaders drop the vertex outputs the next stage does not read, so cooked pipeline shaders have the game's bytecode ([cooked-materials-shaders.md](cooked-materials-shaders.md#custom-pass-shader-types)). The project template `Config\DefaultEngine.ini` holds them.
 
 `Config/DefaultGame.ini` must contain:
 

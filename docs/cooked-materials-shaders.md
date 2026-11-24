@@ -68,7 +68,16 @@ Project materials cook with shaders compiled against the game's uniform buffer l
 
 ## BHVR-only shader types
 
-`TCustomVS` (vertex), `FCustomNoDepthPS` (pixel), the pipelines `CustomNoDepthPipeline` and `CustomNoPixelPipeline`, and the vertex factory `FGPUCullingInstancedStaticMeshVertexFactory` do not exist in the editor. Unknown shader types load as null `TMemoryImagePtr<FShader>` slots (Verbose `Unknown TypeLayout`); their passes are not rendered. `ShaderMap.cpp` list/validate paths are null safe.
+The vertex factory `FGPUCullingInstancedStaticMeshVertexFactory` does not exist in the editor. Its shaders load as null `TMemoryImagePtr<FShader>` slots (Verbose `Unknown TypeLayout`) and are not rendered. `ShaderMap.cpp` list/validate paths are null safe.
+
+### Custom pass shader types
+
+Every game mesh shader map holds the pipelines `CustomNoDepthPipeline` (`TCustomVS` + `FCustomNoDepthPS`) and `CustomNoPixelPipeline` (`TCustomVS`), permutation 0, for every material and vertex factory. The game plugin's module `DBDModkitGameShaders` (loading phase `PostConfigInit`, `Profiles\DBD\Plugin\DBDModkitGame`) registers stand-in types with the game's names, so game shader maps load them and cooks of project materials contain them:
+
+- `TCustomVS`: `Shaders/Private/CustomPassVertexShader.usf`, the stock `DepthOnlyVertexShader.usf` without `ApplyMaterialFirstPersonTransform`. `FCustomNoDepthPS`: `Shaders/Private/CustomPassPixelShader.usf`, writes 0 to `SV_Target0`. It declares vertex factory interpolants it does not read: only then does the D3D compiler pass the pixel stage's used inputs to the vertex stage, which drops its other outputs.
+- `ShouldCompilePermutation` is true only in the cook commandlet (`IsRunningCookCommandlet()`) and not for Nanite vertex factories; the editor never compiles them.
+- The type names are part of the memory image layout hashes; the module logs `custom pass shader type <T> editor=<sha1> cooked=<sha1>`, and the cooked values equal the game's (`TCustomVS` `2CB7988E...`, `FCustomNoDepthPS` `122C5875...`).
+- With `r.Shaders.RemoveUnusedInterpolators=1` ([profile-format.md](profile-format.md#project-requirements)) the compiled stages equal the game's bytecode for `FLocalVertexFactory` and `FInstancedStaticMeshVertexFactory` (shader output hashes `5EA90483...`, `6A6A31D4...`, `75320D30...`), as do the stock depth-only pipeline shaders.
 
 ## Renderer behaviour for cooked shaders
 

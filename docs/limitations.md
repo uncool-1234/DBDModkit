@@ -38,7 +38,7 @@ Present state of gaps; nothing here is a plan.
 ## Materials and shaders
 
 - Cooked materials have no expression graph; the Material Editor shows the root node and cooked statistics only.
-- `TCustomVS`, `FCustomNoDepthPS`, two BHVR shader pipelines and `FGPUCullingInstancedStaticMeshVertexFactory` load as null slots and are not rendered. Diagnostic code that dereferences shader pipeline lists outside the guarded functions (`GetShaderPipelineList`, `GetShaderList`, `GetOutdatedTypes`, `Validate` are null safe) is unaudited.
+- `FGPUCullingInstancedStaticMeshVertexFactory` loads as null slots and is not rendered; project materials cook without it, so in the game they have no shaders for it on instanced static meshes. The custom pass stand-in types (`TCustomVS`, `FCustomNoDepthPS`) compile only in cooks; the editor does not render that pass. Their bytecode is verified for the local and instanced static mesh vertex factories without world position offset; other vertex factories and materials with world position offset are not compared. Diagnostic code that dereferences shader pipeline lists outside the guarded functions (`GetShaderPipelineList`, `GetShaderList`, `GetOutdatedTypes`, `Validate` are null safe) is unaudited.
 - Some materials on the APEX cloth vertex factory (`M_CAMPER`, `M_CAMPER_CUST`, `M_Slasher`, `M_Slasher_Burn`) log `Incomplete material X, missing (TShadowDepthPS...)`; they fall back to the default material.
 - Lights whose cooked `FTranslucentLightingInjectPS` has another parameter layout do not light translucent surfaces through the translucency lighting volume.
 - Whether cooked Niagara GPU emitters render correctly is not verified.

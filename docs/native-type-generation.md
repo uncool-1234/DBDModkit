@@ -56,6 +56,8 @@ Generation takes about 0.8 s for DBD 10.2.2; the jmap parse and derivation come 
 
 ## Game plugin (`DBDModkitGame`)
 
+The plugin has two modules: `DBDModkitGame` (below) and `DBDModkitGameShaders`, which registers the custom pass shader types at `PostConfigInit` ([cooked-materials-shaders.md](cooked-materials-shaders.md#custom-pass-shader-types)).
+
 Registered as `ISuzieGameExtension` (`Source/Suzie/Public/SuzieExtension.h`) and bound by name from `load/native_ops.json` and `load/skip.json`.
 
 | Member | Role |
