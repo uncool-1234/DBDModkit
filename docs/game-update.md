@@ -15,7 +15,7 @@ The golden dump, the gate values, the profile's `uniform_layouts.txt` and the `g
 
 | # | Step | Tool | Result / check |
 |---|---|---|---|
-| 1 | Mount | start the editor | the mount counts of 10.2.2 are 307 + 307. `0 containers` or index errors: [container-cipher-mounting.md](container-cipher-mounting.md) |
+| 1 | Mount | regenerate `Profiles\DBDvanilla_containers.txt` from an unmodified install (one line per `.pak` of the Paks folder, name without extension, below), then start the editor | the mount counts of 10.2.2 are 307 + 307, 0 `skipping non-vanilla container` lines. `0 containers` or index errors: [container-cipher-mounting.md](container-cipher-mounting.md) |
 | 2 | Asset registry | none; read from the mounted pak ([setup-other-machine.md](setup-other-machine.md) section 5) | `Premade AssetRegistry loaded from ...` in the log |
 | 3 | New jmap | put the jmap in `<Project>\ModkitData` and restart the editor (a new file name also needs the `Jmap=` line of `ModkitLocal.ini` changed) | types, schema recipes and gameplay tags follow from the jmap ([native-type-generation.md](native-type-generation.md)); the log shows the `GENERATE OK` summary |
 | 4 | Uniform buffer layouts | `oatmealf-5.7` (below) | new `Profiles\DBD\uniform_layouts.txt` (`[profile:dbd]` commit); no engine build |
@@ -49,3 +49,13 @@ Frozen shader map content is checked against the editor's type layouts (name, si
 - A mismatch on a type listed under `[ShaderLayout] TolerateMismatch` logs `Modkit: tolerating layout hash mismatch for type <T>`. `-ModkitTolerateAllLayoutMismatch` extends this to every type; `-ModkitStrictLayoutHash` disables it.
 - For 10.2.2 the mismatches of `FMaterialShaderMapContent`, `FMeshMaterialShaderMap` and `FGlobalShaderMapContent` derive from their base `FShaderMapContent`, which is 8 bytes larger in the game; `game/dbd` adds a `uint64` after `ShaderPlatformName` (`git show e0f4eb2be`), which makes the sizes equal.
 - The tolerance skips the hash comparison only; it does not adapt sizes or offsets. A size difference is matched by a field on `game/dbd`.
+
+## Vanilla container list
+
+Run in PowerShell against an install without mods (`<Paks>` = `<GameRoot>\DeadByDaylight\Content\Paks`), then commit as `[profile:dbd]`:
+
+```powershell
+$names = Get-ChildItem '<Paks>' -Filter *.pak | ForEach-Object BaseName | Sort-Object { [int]($_ -replace '\D','') }
+@('; Containers of the unmodified game, one file name without extension per line (the .pak and its .utoc/.ucas).') + $names | Set-Content Profiles\DBD\vanilla_containers.txt -Encoding utf8
+```
+

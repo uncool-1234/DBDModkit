@@ -5,6 +5,7 @@ A profile is a directory `Profiles\<Game>\` of the modkit repository (in an inst
 | File | Read by | Purpose |
 |---|---|---|
 | `engine.ini` | engine (`Misc/ModkitCore.cpp`) before any plugin loads | containers, cipher pipeline, shader library, layout tolerance, content roots |
+| `vanilla_containers.txt` | engine (`Misc/ModkitCore.cpp`), named by `[Containers] VanillaList` | the containers of the unmodified game; others in the Paks folder mount only when the project enables them ([asset-loader.md](asset-loader.md#containers)) |
 | `uniform_layouts.txt` | engine (`RenderCore/Private/UniformBufferTranslationLoader.cpp`) before the RHI resources are created | game uniform buffer layouts that differ from the editor's; optional; format in [cooked-materials-shaders.md](cooked-materials-shaders.md) |
 | `profile.json` | Suzie | entry point: names the data files below (relative paths resolve against the profile directory) |
 | `project.json` | the editor's setup window (`Suzie\Source\Suzie\Private\Setup\SzProjectSetup.cpp`) | the data files a project folder holds (`data_files`: `key`, `extension`, `required`, `description`) and the game install probe (`game`: `name`, `probe`) |
@@ -41,6 +42,7 @@ PaksSubdir=Content/Paks          ; candidate Paks directories under GameRoot (re
 GlobalToc=global.utoc
 LookLooseFirst=true
 ImplyUsePaks=true
+VanillaList=vanilla_containers.txt   ; optional; profile-relative file of vanilla container names
 IoStoreDirectoryIndex=Xor:TocHeader:104:36;Aes
 PakIndex=Aes;Xor:FooterCustom
 PakFooterVariant=Guid16;Encrypted1;Magic4;Version4;IndexOffset8;IndexSize8;IndexHash20;Custom28;U32;CompressionNames5x32
@@ -123,6 +125,7 @@ For every project it opens, the engine sets `UE-LocalDataCachePath` to `<Project
 | `-ModkitUseCookedGlobalShaders` | use the game's `GlobalShaderCache` |
 | `-ModkitAssetFilter=<file>` | package filter file (default `<Project>/ModkitData/AssetFilter.txt`; [asset-loader.md](asset-loader.md)) |
 | `-ModkitAllAssets` | ignore the package filter |
+| `-ModkitAllContainers` | mount every container in the game's Paks folder, also those not in `[Containers] VanillaList` |
 | `-DisableCookedShaderLibrary`, `-DisablePremadeAssetRegistry`, `-NoPaks` | disable shader library, premade registry, pak mounting |
 | `-DisableSuzie` | Suzie does nothing |
 | `-SuzieProfile=<name\|dir>` | Suzie profile (bare name = `<plugin>/Profiles/<name>`) |

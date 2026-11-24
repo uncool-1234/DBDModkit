@@ -17,6 +17,7 @@ Toolbar button **Asset Loader** (level editor toolbar, User section; the tooltip
 
 - The left list holds every package of the game's premade asset registry (Name, Path, Type columns, search on name or path). Space or the context menu toggles the checks of the selected rows. The right list has a remove button per row and its own search. Counts read "M of N items" while a search is active.
 - **Load dependencies** applies to Only selected; it is disabled in the other modes.
+- **Mount non-vanilla pakchunks** (off by default, every mode): also mount containers in the game's Paks folder that are not in the profile's vanilla list, such as installed mods ([Containers](#containers)). Disabled when the profile has no vanilla list.
 - Apply is disabled in Only selected with nothing checked (tooltip: "Select at least one asset, or choose None.").
 - Apply writes both files below. When the result differs from the filter the editor started with, a prompt offers to restart; the restart goes through the editor's own restart (unsaved packages are offered for saving, the command line is kept).
 - The window reads its own copy of the premade registry, so hidden packages stay listed and can be selected again.
@@ -32,18 +33,20 @@ The cooked premade registry carries no dependency data. A package's dependencies
 ```
 ; comments start with ; or #
 Mode=AllowList          ; first non-comment line: Off, AllowList or DenyList
+MountNonVanillaContainers=false   ; optional; default false
 /Game/Materials/Masters/Deprecated_Basic/M_Basic_Emmisive
 /Game/Textures/Props/Misc/T_SlushMachine01_BC
 ```
 
 - AllowList: only the listed packages are visible. DenyList: the listed packages are hidden. Off: no filtering.
+- `MountNonVanillaContainers=true|false` is read even with `-ModkitAllAssets` ([Containers](#containers)).
 - One long package name per line; other lines are skipped with a warning. A missing or unknown `Mode` line means Off.
 - Written by the window as: All → `Mode=Off`; None → `Mode=AllowList` with no lines; Only selected → `Mode=AllowList` with the checked packages (and their dependency closure when Load dependencies is on); All except selected → `Mode=DenyList` with the checked packages.
 
 `AssetLoader.json` keeps the window's state (the engine does not read it):
 
 ```json
-{ "mode": "OnlySelected", "load_dependencies": true, "selected": ["/Game/..."] }
+{ "mode": "OnlySelected", "load_dependencies": true, "mount_non_vanilla_containers": false, "selected": ["/Game/..."] }
 ```
 
 `mode` is `All`, `OnlySelected`, `AllExceptSelected` or `None`. Without this file the window takes its initial state from `AssetFilter.txt`.
@@ -59,6 +62,12 @@ The filter is read in `Misc/ModkitCore.cpp` while the modkit state is built, bef
 A visible package that imports a hidden one loads with that import null, unless a project asset exists at the hidden path.
 
 Switches: `-ModkitAssetFilter=<file>` reads another filter file; `-ModkitAllAssets` ignores the filter (escape hatch when a filter hides too much). `Suzie.AssetFilter [<package>...]` prints the active filter and, per package, whether it is hidden, in the live registry, found by `DoesPackageExist`, and loaded from IoStore or as an uncooked file.
+
+## Containers
+
+The profile's `[Containers] VanillaList` names a file (DBD: `vanilla_containers.txt`, the 307 `pakchunk<n>-Windows` containers of the unmodified game) with one container file name without extension per line. With such a list, a `.pak` (and the IoStore container of the same name) in the game's Paks folder or one of its subfolders is mounted only when its name is listed, unless `MountNonVanillaContainers=true` or `-ModkitAllContainers`. `global.utoc` and containers outside the game's Paks folder are never filtered. Log lines: `Modkit: vanilla container list '<file>': <n> containers.`, per skipped file `Modkit: skipping non-vanilla container <file>.` and a summary with the count.
+
+After a game update the list is regenerated from an unmodified install ([game-update.md](game-update.md)).
 
 ## Replacing a game material instance
 

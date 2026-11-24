@@ -33,7 +33,7 @@ The AES-256 key is a text file the user supplies: one line, `0x` plus 64 hex dig
 
 ## Mount sequence
 
-1. `IPlatformFilePak`: reads the config, adds `PaksDir` (the first `PaksSubdir` under `GameRoot` containing a `ProbeFile`), implies `-UsePaks`, binds the key delegate, mounts `GlobalToc`.
+1. `IPlatformFilePak`: reads the config, adds `PaksDir` (the first `PaksSubdir` under `GameRoot` containing a `ProbeFile`), implies `-UsePaks`, binds the key delegate, mounts `GlobalToc`. Containers not in the profile's `[Containers] VanillaList` are skipped unless the project enables them ([asset-loader.md](asset-loader.md#containers)).
 2. Footer parse and index decryption through the cipher; stock path as fallback.
 3. The first mount happens in `LaunchCheckForFileOverride`; plugin modules of phase `EarliestPossible` load later.
 4. Plugin content roots: `PluginScanRoot` is scanned for `.uplugin` files and each plugin is mounted as `/<Plugin>/` (238 for DBD 10.2.2) with its local folder in the project: `<Project>/Plugins/<plugin folder relative to PluginScanRoot>/Content/`. The `.uplugin` files are read from the mounted paks. Each such local folder, and the project `Content/` folder paired with `[ContentMounts] GameContentDir`, is recorded as a container directory: a cooked file that is read by path (a `UFontFace`'s `.ufont`) and is missing in the project folder resolves to the same relative path inside the container (`Modkit::ResolveContainerFilename`).
